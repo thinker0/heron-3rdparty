@@ -18,12 +18,15 @@
 
 package org.apache.heron.kafka.spout;
 
+import static java.lang.String.format;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -40,6 +43,7 @@ import org.apache.heron.kafka.spout.internal.ConsumerFactory;
 import org.apache.heron.kafka.spout.internal.ConsumerFactoryDefault;
 import org.apache.heron.kafka.spout.internal.OffsetManager;
 import org.apache.heron.kafka.spout.internal.Timer;
+import org.apache.heron.kafka.spout.metrics.KafkaMetricDecorator;
 import org.apache.heron.kafka.spout.metrics.KafkaOffsetMetric;
 import org.apache.heron.kafka.spout.subscription.TopicAssigner;
 import org.apache.kafka.clients.consumer.Consumer;
@@ -48,6 +52,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
+import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.InterruptException;
 import org.apache.kafka.common.errors.RetriableException;
@@ -64,6 +69,8 @@ public class KafkaSpout<K, V> extends BaseRichSpout {
     //Initial delay for the commit and assignment refresh timers
     public static final long TIMER_DELAY_MS = 500;
     private static final Logger LOG = LoggerFactory.getLogger(KafkaSpout.class);
+    private int metricsIntervalInSecs = 60;
+    private long previousKafkaMetricsUpdatedTimestamp = 0;
 
     // Storm
     protected SpoutOutputCollector collector;
@@ -73,6 +80,7 @@ public class KafkaSpout<K, V> extends BaseRichSpout {
     private final ConsumerFactory<K, V> kafkaConsumerFactory;
     private final TopicAssigner topicAssigner;
     private transient Consumer<K, V> consumer;
+    private transient Set<MetricName> reportedMetrics;
 
     // Bookkeeping
     // Strategy to determine the fetch offset of the first realized by the spout upon activation
@@ -130,12 +138,13 @@ public class KafkaSpout<K, V> extends BaseRichSpout {
             commitTimer = new Timer(TIMER_DELAY_MS, kafkaSpoutConfig.getOffsetsCommitPeriodMs(), TimeUnit.MILLISECONDS);
         }
         refreshAssignmentTimer = new Timer(TIMER_DELAY_MS, kafkaSpoutConfig.getPartitionRefreshPeriodMs(), TimeUnit.MILLISECONDS);
+        metricsIntervalInSecs = kafkaSpoutConfig.getMetricsTimeBucketSizeInSecs();
 
         offsetManagers = new ConcurrentHashMap<>();
         emitted = new HashSet<>();
         waitingToEmit = new ConcurrentHashMap<>();
         commitMetadataManager = new CommitMetadataManager(context, kafkaSpoutConfig.getProcessingGuarantee());
-
+        reportedMetrics = new LinkedHashSet<>();
         rebalanceListener = new KafkaSpoutConsumerRebalanceListener();
 
         consumer = kafkaConsumerFactory.createConsumer(kafkaSpoutConfig.getKafkaProps());
@@ -162,6 +171,32 @@ public class KafkaSpout<K, V> extends BaseRichSpout {
             return false;
         }
         return true;
+    }
+
+    private void registerConsumerMetrics() {
+        consumer.metrics().forEach((metricName, o) -> {
+            if (!reportedMetrics.contains(metricName)) {
+                reportedMetrics.add(metricName);
+                String exposedName = extractKafkaMetricName(metricName);
+                LOG.info("register Kafka Consumer metric {}", exposedName);
+                context.registerMetric(exposedName, new KafkaMetricDecorator<>(o),
+                    metricsIntervalInSecs);
+            }
+        });
+    }
+
+    private String extractKafkaMetricName(MetricName metricName) {
+        StringBuilder builder = new StringBuilder()
+            .append("kafkaConsumer-")
+            .append(metricName.name())
+            .append('/')
+            .append(metricName.group())
+            .append('/');
+        List<String> tags = new ArrayList<>();
+        metricName.tags().forEach((s, s2) -> tags.add(format("%s-%s", s, s2)));
+        builder.append(String.join("/", tags));
+        LOG.debug("register Kafka Consumer metric {}", builder);
+        return builder.toString();
     }
 
     private boolean isAtLeastOnceProcessing() {
@@ -369,6 +404,12 @@ public class KafkaSpout<K, V> extends BaseRichSpout {
                     createFetchedOffsetsMetadata(consumer.assignment());
                 consumer.commitSync(offsetsToCommit);
                 LOG.debug("Committed offsets {} to Kafka", offsetsToCommit);
+            }
+            // Register KafkaConsumer metrics
+            if (System.currentTimeMillis() - previousKafkaMetricsUpdatedTimestamp
+                > metricsIntervalInSecs * 1000) {
+                registerConsumerMetrics();
+                previousKafkaMetricsUpdatedTimestamp = System.currentTimeMillis();
             }
             return consumerRecords;
         } finally {
