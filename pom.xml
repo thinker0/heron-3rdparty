@@ -10,7 +10,7 @@
 
   <groupId>com.github.thinker0.heron</groupId>
   <artifactId>heron-3party</artifactId>
-  <version>1.0.1</version>
+  <version>1.0.2-SNAPSHOT</version>
   <packaging>pom</packaging>
 
   <modules>
