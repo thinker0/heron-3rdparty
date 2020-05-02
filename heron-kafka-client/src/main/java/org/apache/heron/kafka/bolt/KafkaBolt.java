@@ -66,11 +66,11 @@ public class KafkaBolt<K, V> extends BaseTickTupleAwareRichBolt {
     private PreparableCallback providedCallback;
     private Properties boltSpecifiedProperties = new Properties();
     /**
-     * {@see KafkaBolt#setFireAndForget(boolean)} for more details on this. 
+     * KafkaBolt#setFireAndForget(boolean) for more details on this.
      */
     private boolean fireAndForget = false;
     /**
-     * {@see KafkaBolt#setAsync(boolean)} for more details on this. 
+     * KafkaBolt#setAsync(boolean) for more details on this.
      */
     private boolean async = true;
 

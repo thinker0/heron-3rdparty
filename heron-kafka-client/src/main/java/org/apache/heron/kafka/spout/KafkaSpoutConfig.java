@@ -230,7 +230,7 @@ public class KafkaSpoutConfig<K, V> extends CommonKafkaSpoutConfig<K, V> {
          * regardless of this setting. This setting is false by default.
          *
          * <p>Enabling tracking can be useful even in cases where reliability is not a concern, because it allows
-         * {@link Config#TOPOLOGY_MAX_SPOUT_PENDING} to have an effect, and enables some spout metrics (e.g. complete-latency) that would
+         * TOPOLOGY_MAX_SPOUT_PENDING to have an effect, and enables some spout metrics (e.g. complete-latency) that would
          * otherwise be disabled.
          *
          * @param tupleTrackingEnforced true if Storm should track emitted tuples, false otherwise
