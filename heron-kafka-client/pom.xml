@@ -22,7 +22,7 @@
   <modelVersion>4.0.0</modelVersion>
 
   <parent>
-    <groupId>com.linecorp.heron</groupId>
+    <groupId>com.github.thinker0.heron</groupId>
     <artifactId>heron-3party</artifactId>
     <version>1.0.0-SNAPSHOT</version>
     <relativePath>..</relativePath>
@@ -79,7 +79,7 @@
       <artifactId>commons-lang</artifactId>
     </dependency>
     <dependency>
-      <groupId>com.linecorp.heron</groupId>
+      <groupId>com.github.thinker0.heron</groupId>
       <artifactId>heron-common</artifactId>
       <version>${project.version}</version>
     </dependency>
@@ -90,6 +90,10 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-jar-plugin</artifactId>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-source-plugin</artifactId>
       </plugin>
     </plugins>
   </build>
