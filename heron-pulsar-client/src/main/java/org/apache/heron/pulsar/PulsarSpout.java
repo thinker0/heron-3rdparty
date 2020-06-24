@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.pulsar.storm;
+package org.apache.heron.pulsar;
 
 import static java.lang.String.format;
 

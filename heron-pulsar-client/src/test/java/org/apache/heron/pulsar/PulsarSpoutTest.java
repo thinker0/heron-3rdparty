@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.pulsar.storm;
+package org.apache.heron.pulsar;
 
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.anyInt;
@@ -50,8 +50,9 @@ import org.apache.pulsar.client.api.SubscriptionType;
 import org.apache.pulsar.client.impl.ClientBuilderImpl;
 import org.apache.pulsar.client.impl.MessageImpl;
 import org.apache.pulsar.common.api.proto.PulsarApi;
-import org.apache.pulsar.storm.PulsarSpout.SpoutConsumer;
+import org.apache.heron.pulsar.PulsarSpout.SpoutConsumer;
 import org.mockito.ArgumentCaptor;
+import org.mockito.Mockito;
 import org.testng.annotations.Test;
 
 import com.google.common.collect.Maps;
@@ -79,7 +80,7 @@ public class PulsarSpoutTest {
         });
 
         ClientBuilder builder = spy(new ClientBuilderImpl());
-        PulsarSpout spout = spy(new PulsarSpout(conf, builder));
+        PulsarSpout spout = Mockito.spy(new PulsarSpout(conf, builder));
 
         Message<byte[]> msg = new MessageImpl<>(conf.getTopic(), "1:1", Maps.newHashMap(),
                 new byte[0], Schema.BYTES, PulsarApi.MessageMetadata.newBuilder());
@@ -140,7 +141,7 @@ public class PulsarSpoutTest {
         String msgContent = pulsarTuple ? "stream:pstream" : "test";
 
         ClientBuilder builder = spy(new ClientBuilderImpl());
-        PulsarSpout spout = spy(new PulsarSpout(conf, builder));
+        PulsarSpout spout = Mockito.spy(new PulsarSpout(conf, builder));
         TopologyContext context = mock(TopologyContext.class);
         final String componentId = "test-component-id";
         doReturn(componentId).when(context).getThisComponentId();

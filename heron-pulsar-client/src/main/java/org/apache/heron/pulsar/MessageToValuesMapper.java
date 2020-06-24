@@ -16,30 +16,28 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.pulsar.storm;
+package org.apache.heron.pulsar;
 
+import java.io.Serializable;
 
+import org.apache.heron.api.topology.OutputFieldsDeclarer;
 import org.apache.heron.api.tuple.Values;
+import org.apache.pulsar.client.api.Message;
 
-/**
- * Returned by MessageToValuesMapper, this specifies the Values
- * for an output tuple and the stream it should be sent to.
- */
-public class PulsarTuple extends Values {
-
-    protected final String outputStream;
-
-    public PulsarTuple(String outStream, Object ... values) {
-        super(values);
-        outputStream = outStream;
-    }
+public interface MessageToValuesMapper extends Serializable {
 
     /**
-     * Return stream the tuple should be emitted on.
+     * Convert {@link org.apache.pulsar.client.api.Message} to tuple values.
      *
-     * @return String
+     * @param msg
+     * @return
      */
-    public String getOutputStream() {
-        return outputStream;
-    }
+    Values toValues(Message<byte[]> msg);
+
+    /**
+     * Declare the output schema for the spout.
+     *
+     * @param declarer
+     */
+    void declareOutputFields(OutputFieldsDeclarer declarer);
 }
