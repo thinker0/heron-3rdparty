@@ -60,9 +60,9 @@ public class SharedPulsarClient {
      *
      * @param componentId
      *            the id of the spout/bolt
-     * @param serviceUrl
      * @param clientConf
-     * @return
+     *            config
+     * @return SharedPulsarClient
      * @throws PulsarClientException
      */
     public static SharedPulsarClient get(String componentId, ClientConfigurationData clientConf)

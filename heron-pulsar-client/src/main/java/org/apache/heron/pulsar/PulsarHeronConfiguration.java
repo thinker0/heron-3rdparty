@@ -25,7 +25,7 @@ import java.io.Serializable;
  *
  *
  */
-public class PulsarStormConfiguration implements Serializable {
+public class PulsarHeronConfiguration implements Serializable {
 
     /**
      *

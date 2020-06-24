@@ -25,7 +25,7 @@ import java.util.Objects;
  *
  *
  */
-public class PulsarBoltConfiguration extends PulsarStormConfiguration {
+public class PulsarBoltConfiguration extends PulsarHeronConfiguration {
 
     /**
      *

@@ -29,7 +29,7 @@ import org.apache.pulsar.client.api.SubscriptionType;
  *
  *
  */
-public class PulsarSpoutConfiguration extends PulsarStormConfiguration {
+public class PulsarSpoutConfiguration extends PulsarHeronConfiguration {
 
     /**
      *
