@@ -33,6 +33,7 @@ import java.util.concurrent.TimeUnit;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
+import java.util.concurrent.atomic.AtomicLong;
 import org.apache.heron.api.metric.IMetric;
 import org.apache.heron.api.spout.BaseRichSpout;
 import org.apache.heron.api.spout.SpoutOutputCollector;
@@ -83,12 +84,12 @@ public class PulsarSpout extends BaseRichSpout implements IMetric {
     private String spoutId;
     private SpoutOutputCollector collector;
     private PulsarSpoutConsumer consumer;
-    private volatile long messagesReceived = 0;
-    private volatile long messagesEmitted = 0;
-    private volatile long messagesFailed = 0;
-    private volatile long messageNotAvailableCount = 0;
-    private volatile long pendingAcks = 0;
-    private volatile long messageSizeReceived = 0;
+    private final AtomicLong messagesReceived = new AtomicLong();
+    private final AtomicLong messagesEmitted = new AtomicLong();
+    private final AtomicLong messagesFailed = new AtomicLong();
+    private final AtomicLong messageNotAvailableCount = new AtomicLong();
+    private final AtomicLong pendingAcks = new AtomicLong();
+    private final AtomicLong messageSizeReceived = new AtomicLong();
 
     public PulsarSpout(PulsarSpoutConfiguration pulsarSpoutConf) {
         this(pulsarSpoutConf, PulsarClient.builder());
@@ -155,7 +156,7 @@ public class PulsarSpout extends BaseRichSpout implements IMetric {
             pendingMessageRetries.remove(msg.getMessageId());
             // we should also remove message from failedMessages but it will be eventually removed while emitting next
             // tuple
-            --pendingAcks;
+            pendingAcks.decrementAndGet();
         }
     }
 
@@ -178,8 +179,8 @@ public class PulsarSpout extends BaseRichSpout implements IMetric {
                 messageRetries.incrementAndGet();
                 pendingMessageRetries.putIfAbsent(id, messageRetries);
                 failedMessages.add(msg);
-                --pendingAcks;
-                messagesFailed++;
+                pendingAcks.decrementAndGet();
+                messagesFailed.incrementAndGet();
             } else {
                 LOG.warn("[{}] Number of retries limit reached, dropping the message {}", spoutId, id);
                 ack(msg);
@@ -219,13 +220,13 @@ public class PulsarSpout extends BaseRichSpout implements IMetric {
                 while (!done) {
                     msg = consumer.receive(100, TimeUnit.MILLISECONDS);
                     if (msg != null) {
-                        ++messagesReceived;
-                        messageSizeReceived += msg.getData().length;
+                        messagesReceived.incrementAndGet();
+                        messageSizeReceived.getAndAdd(msg.getData().length);
                         done = mapToValueAndEmit(msg);
                     } else {
                         // queue is empty and nothing to emit
                         done = true;
-                        messageNotAvailableCount++;
+                        messageNotAvailableCount.incrementAndGet();
                     }
                 }
             } catch (PulsarClientException e) {
@@ -319,7 +320,7 @@ public class PulsarSpout extends BaseRichSpout implements IMetric {
     private boolean mapToValueAndEmit(Message<byte[]> msg) {
         if (msg != null) {
             Values values = pulsarSpoutConf.getMessageToValuesMapper().toValues(msg);
-            ++pendingAcks;
+            pendingAcks.incrementAndGet();
             if (values == null) {
                 // since the mapper returned null, we can drop the message and ack it immediately
                 if (LOG.isDebugEnabled()) {
@@ -332,7 +333,7 @@ public class PulsarSpout extends BaseRichSpout implements IMetric {
                 } else {
                     collector.emit(values, msg);
                 }
-                ++messagesEmitted;
+                messagesEmitted.incrementAndGet();
                 if (LOG.isDebugEnabled()) {
                     LOG.debug("[{}] Emitted message {} to the collector", spoutId, msg.getMessageId());
                 }
@@ -371,23 +372,23 @@ public class PulsarSpout extends BaseRichSpout implements IMetric {
     @SuppressWarnings({ "rawtypes" })
     ConcurrentMap getMetrics() {
         metricsMap.put(NO_OF_PENDING_FAILED_MESSAGES, (long) pendingMessageRetries.size());
-        metricsMap.put(NO_OF_MESSAGES_RECEIVED, messagesReceived);
-        metricsMap.put(NO_OF_MESSAGES_EMITTED, messagesEmitted);
-        metricsMap.put(NO_OF_MESSAGES_FAILED, messagesFailed);
-        metricsMap.put(MESSAGE_NOT_AVAILABLE_COUNT, messageNotAvailableCount);
-        metricsMap.put(NO_OF_PENDING_ACKS, pendingAcks);
-        metricsMap.put(CONSUMER_RATE, ((double) messagesReceived) / pulsarSpoutConf.getMetricsTimeIntervalInSecs());
+        metricsMap.put(NO_OF_MESSAGES_RECEIVED, messagesReceived.get());
+        metricsMap.put(NO_OF_MESSAGES_EMITTED, messagesEmitted.get());
+        metricsMap.put(NO_OF_MESSAGES_FAILED, messagesFailed.get());
+        metricsMap.put(MESSAGE_NOT_AVAILABLE_COUNT, messageNotAvailableCount.get());
+        metricsMap.put(NO_OF_PENDING_ACKS, pendingAcks.get());
+        metricsMap.put(CONSUMER_RATE, ((double) messagesReceived.get()) / pulsarSpoutConf.getMetricsTimeIntervalInSecs());
         metricsMap.put(CONSUMER_THROUGHPUT_BYTES,
-                ((double) messageSizeReceived) / pulsarSpoutConf.getMetricsTimeIntervalInSecs());
+                ((double) messageSizeReceived.get()) / pulsarSpoutConf.getMetricsTimeIntervalInSecs());
         return metricsMap;
     }
 
     void resetMetrics() {
-        messagesReceived = 0;
-        messagesEmitted = 0;
-        messageSizeReceived = 0;
-        messagesFailed = 0;
-        messageNotAvailableCount = 0;
+        messagesReceived.set(0);
+        messagesEmitted.set(0);
+        messageSizeReceived.set(0);
+        messagesFailed.set(0);
+        messageNotAvailableCount.set(0);
     }
 
     @SuppressWarnings("rawtypes")
