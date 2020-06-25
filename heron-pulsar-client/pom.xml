@@ -31,7 +31,7 @@
   </parent>
 
   <artifactId>heron-pulsar-client</artifactId>
-  <name>Pulsar Heron adapter</name>
+  <name>Heron Pulsar adapter</name>
 
   <properties>
   </properties>

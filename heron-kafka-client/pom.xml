@@ -27,7 +27,7 @@
   </parent>
 
   <artifactId>heron-kafka-client</artifactId>
-  <name>heron-kafka-client</name>
+  <name>Heron Kafka adapter</name>
 
   <packaging>jar</packaging>
 
