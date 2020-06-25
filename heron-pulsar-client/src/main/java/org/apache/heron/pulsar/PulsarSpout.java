@@ -70,9 +70,9 @@ public class PulsarSpout extends BaseRichSpout implements IMetric {
     public static final String CONSUMER_RATE = "consumerRate";
     public static final String CONSUMER_THROUGHPUT_BYTES = "consumerThroughput";
 
-    private final ClientConfigurationData clientConf;
-    private final PulsarSpoutConfiguration pulsarSpoutConf;
-    private final ConsumerConfigurationData<byte[]> consumerConf;
+    protected final ClientConfigurationData clientConf;
+    protected final PulsarSpoutConfiguration pulsarSpoutConf;
+    protected final ConsumerConfigurationData<byte[]> consumerConf;
     private final long failedRetriesTimeoutNano;
     private final int maxFailedRetries;
     private final ConcurrentMap<MessageId, MessageRetries> pendingMessageRetries = new ConcurrentHashMap<>();
@@ -290,7 +290,7 @@ public class PulsarSpout extends BaseRichSpout implements IMetric {
                 pulsarSpoutConf.getMetricsTimeIntervalInSecs());
     }
 
-    private PulsarSpoutConsumer createConsumer() throws PulsarClientException {
+    protected PulsarSpoutConsumer createConsumer() throws PulsarClientException {
         sharedPulsarClient = SharedPulsarClient.get(componentId, clientConf);
         PulsarSpoutConsumer consumer;
         if (pulsarSpoutConf.isSharedConsumerEnabled()) {
@@ -399,7 +399,7 @@ public class PulsarSpout extends BaseRichSpout implements IMetric {
         return metrics;
     }
 
-    private ReaderConfigurationData<byte[]> newReaderConfiguration() {
+    protected ReaderConfigurationData<byte[]> newReaderConfiguration() {
         ReaderConfigurationData<byte[]> readerConf = new ReaderConfigurationData<>();
         readerConf.setTopicName(pulsarSpoutConf.getTopic());
         readerConf.setReaderName(pulsarSpoutConf.getSubscriptionName());
@@ -413,7 +413,7 @@ public class PulsarSpout extends BaseRichSpout implements IMetric {
         return readerConf;
     }
 
-    private ConsumerConfigurationData<byte[]> newConsumerConfiguration() {
+    protected ConsumerConfigurationData<byte[]> newConsumerConfiguration() {
         ConsumerConfigurationData<byte[]> consumerConf = this.consumerConf != null ? this.consumerConf
                 : new ConsumerConfigurationData<>();
         consumerConf.setTopicNames(Collections.singleton(pulsarSpoutConf.getTopic()));

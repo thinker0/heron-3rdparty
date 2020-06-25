@@ -172,9 +172,9 @@ public class PulsarSpoutConfiguration extends PulsarHeronConfiguration {
 
     /**
      * if subscription is not durable then it creates non-durable reader to start reading from the
-     * {@link #setNonDurableSubscriptionReadPosition(MessagePosition)} in topic.
+     * {@link #setNonDurableSubscriptionReadPosition(MessageId)} in topic.
      * 
-     * @param nonDurableSubscription
+     * @param durableSubscription
      */
     public void setDurableSubscription(boolean durableSubscription) {
         this.durableSubscription = durableSubscription;
