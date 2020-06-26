@@ -21,13 +21,13 @@
 
   <parent>
     <groupId>com.github.thinker0.heron</groupId>
-    <artifactId>heron-3party</artifactId>
-    <version>1.0.1-SNAPSHOT</version>
+    <artifactId>heron-3rdparty</artifactId>
+    <version>1.0.3-SNAPSHOT</version>
     <relativePath>..</relativePath>
   </parent>
 
   <artifactId>heron-kafka-client</artifactId>
-  <name>heron-kafka-client</name>
+  <name>Heron Kafka adapter</name>
 
   <packaging>jar</packaging>
 

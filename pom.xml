@@ -5,16 +5,17 @@
   <parent>
     <groupId>org.apache</groupId>
     <artifactId>apache</artifactId>
-    <version>21</version>
+    <version>23</version>
   </parent>
 
   <groupId>com.github.thinker0.heron</groupId>
-  <artifactId>heron-3party</artifactId>
-  <version>1.0.1-SNAPSHOT</version>
+  <artifactId>heron-3rdparty</artifactId>
+  <version>1.0.3-SNAPSHOT</version>
   <packaging>pom</packaging>
 
   <modules>
     <module>heron-kafka-client</module>
+    <module>heron-pulsar-client</module>
     <module>heron-common</module>
   </modules>
 
@@ -25,12 +26,19 @@
 
     <slf4j.version>1.7.26</slf4j.version>
 
-    <storm.kafka.client.version>2.2.2</storm.kafka.client.version>
+    <kafka.client.version>2.5.0</kafka.client.version>
+    <pulsar.version>2.6.0</pulsar.version>
     <jackson.version>2.9.8</jackson.version>
     <jackson.version.databind>${jackson.version}</jackson.version.databind>
 
     <heron.version>0.20.1-incubating</heron.version>
     <commons-lang.version>2.6</commons-lang.version>
+
+    <gitflow.version>1.14.0</gitflow.version>
+    <jaxb.version>2.3.0</jaxb.version>
+    <testng.version>6.14.3</testng.version>
+    <mockito.version>2.28.2</mockito.version>
+    <powermock.version>2.0.2</powermock.version>
   </properties>
   
   <licenses>
@@ -69,7 +77,7 @@
       <dependency>
         <groupId>org.apache.kafka</groupId>
         <artifactId>kafka-clients</artifactId>
-        <version>${storm.kafka.client.version}</version>
+        <version>${kafka.client.version}</version>
         <scope>provided</scope>
       </dependency>
       <dependency>
@@ -87,6 +95,20 @@
         <artifactId>commons-lang</artifactId>
         <version>${commons-lang.version}</version>
       </dependency>
+
+      <dependency>
+        <groupId>org.mockito</groupId>
+        <artifactId>mockito-core</artifactId>
+        <version>${mockito.version}</version>
+        <scope>test</scope>
+      </dependency>
+      <dependency>
+        <groupId>org.testng</groupId>
+        <artifactId>testng</artifactId>
+        <version>${testng.version}</version>
+        <scope>test</scope>
+      </dependency>
+
     </dependencies>
   </dependencyManagement>
 
@@ -137,13 +159,6 @@
         <configuration>
           <source>${java.source.version}</source>
           <encoding>${project.build.sourceEncoding}</encoding>
-          <doclet>ch.raffael.doclets.pegdown.PegdownDoclet</doclet>
-          <docletArtifact>
-            <groupId>ch.raffael.pegdown-doclet</groupId>
-            <artifactId>pegdown-doclet</artifactId>
-            <version>1.1</version>
-          </docletArtifact>
-          <useStandardDocletOptions>true</useStandardDocletOptions>
         </configuration>
         <executions>
           <execution>
@@ -152,6 +167,9 @@
             <goals>
               <goal>jar</goal>
             </goals>
+            <configuration>
+              <additionalOptions>-Xdoclint:none</additionalOptions>
+            </configuration>
           </execution>
         </executions>
       </plugin>
@@ -193,6 +211,27 @@
             </goals>
           </execution>
         </executions>
+      </plugin>
+      <plugin>
+        <!-- https://github.com/aleksandr-m/gitflow-maven-plugin -->
+        <groupId>com.amashchenko.maven.plugin</groupId>
+        <artifactId>gitflow-maven-plugin</artifactId>
+        <version>${gitflow.version}</version>
+        <configuration>
+          <installProject>false</installProject>
+          <verbose>false</verbose>
+          <allowSnapshots>true</allowSnapshots>
+          <gitFlowConfig>
+            <productionBranch>master</productionBranch>
+            <developmentBranch>develop</developmentBranch>
+            <featureBranchPrefix>feature/</featureBranchPrefix>
+            <releaseBranchPrefix>release/</releaseBranchPrefix>
+            <hotfixBranchPrefix>hotfix/</hotfixBranchPrefix>
+            <supportBranchPrefix>support/</supportBranchPrefix>
+            <versionTagPrefix>v</versionTagPrefix>
+            <origin>origin</origin>
+          </gitFlowConfig>
+        </configuration>
       </plugin>
     </plugins>
   </build>
