@@ -109,7 +109,7 @@ public class PulsarBolt extends BaseRichBolt implements IMetric {
             throw new IllegalStateException(
                     format("Failed to initialize producer for %s : %s", pulsarBoltConf.getTopic(), e.getMessage()), e);
         }
-        context.registerMetric(String.format("PulsarBoltMetrics-%s-%s", componentId, context.getThisTaskIndex()), this,
+        context.registerMetric(String.format("PulsarBolt/%s-%s", componentId, context.getThisTaskIndex()), this,
                 pulsarBoltConf.getMetricsTimeIntervalInSecs());
     }
 

@@ -286,7 +286,7 @@ public class PulsarSpout extends BaseRichSpout implements IMetric {
             throw new IllegalStateException(format("Failed to initialize consumer for %s-%s : %s",
                     pulsarSpoutConf.getTopic(), pulsarSpoutConf.getSubscriptionName(), e.getMessage()), e);
         }
-        context.registerMetric(String.format("PulsarSpoutMetrics-%s-%s", componentId, context.getThisTaskIndex()), this,
+        context.registerMetric(String.format("PulsarSpout/%s-%s", componentId, context.getThisTaskIndex()), this,
                 pulsarSpoutConf.getMetricsTimeIntervalInSecs());
     }
 
