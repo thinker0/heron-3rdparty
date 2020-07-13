@@ -17,6 +17,7 @@
     <module>heron-kafka-client</module>
     <module>heron-pulsar-client</module>
     <module>heron-common</module>
+    <module>heron-hdfs</module>
   </modules>
 
   <properties>
@@ -108,7 +109,16 @@
         <version>${testng.version}</version>
         <scope>test</scope>
       </dependency>
-
+      <dependency>
+        <groupId>com.google.guava</groupId>
+        <artifactId>guava</artifactId>
+        <version>27.0.1-jre</version>
+      </dependency>
+      <dependency>
+        <groupId>com.esotericsoftware</groupId>
+        <artifactId>kryo</artifactId>
+        <version>4.0.2</version>
+      </dependency>
     </dependencies>
   </dependencyManagement>
 

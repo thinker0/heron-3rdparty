@@ -21,11 +21,17 @@ import java.util.List;
 import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
+
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.heron.api.bolt.BaseRichBolt;
 import org.apache.heron.api.bolt.OutputCollector;
+import org.apache.heron.api.topology.OutputFieldsDeclarer;
+import org.apache.heron.api.topology.TopologyContext;
+import org.apache.heron.api.tuple.Tuple;
+import org.apache.heron.api.utils.TupleUtils;
 import org.apache.heron.hdfs.bolt.format.FileNameFormat;
 import org.apache.heron.hdfs.bolt.rotation.FileRotationPolicy;
 import org.apache.heron.hdfs.bolt.rotation.TimedRotationPolicy;
@@ -34,9 +40,7 @@ import org.apache.heron.hdfs.common.NullPartitioner;
 import org.apache.heron.hdfs.common.Partitioner;
 import org.apache.heron.hdfs.common.rotation.RotationAction;
 import org.apache.heron.hdfs.security.HdfsSecurityUtil;
-import org.apache.heron.api.topology.TopologyContext;
-import org.apache.heron.api.tuple.Tuple;
-import org.apache.heron.utils.TupleUtils;
+import org.apache.heron.utils.Utils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -113,6 +117,9 @@ public abstract class AbstractHdfsBolt extends BaseRichBolt {
         }
 
         try {
+            // Add pre initialize configuration
+            LOG.info("UserGroupInformation initialize: {}", hdfsConfig.toString());
+            UserGroupInformation.setConfiguration(hdfsConfig);
             HdfsSecurityUtil.login(conf, hdfsConfig);
             doPrepare(conf, topologyContext, collector);
         } catch (Exception e) {
@@ -236,7 +243,7 @@ public abstract class AbstractHdfsBolt extends BaseRichBolt {
 
     @Override
     public Map<String, Object> getComponentConfiguration() {
-        return TupleUtils.putTickFrequencyIntoComponentConfig(super.getComponentConfiguration(), tickTupleInterval);
+        return Utils.putTickFrequencyIntoComponentConfig(super.getComponentConfiguration(), tickTupleInterval);
     }
 
     @Override

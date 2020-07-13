@@ -15,9 +15,13 @@ package org.apache.heron.hdfs.bolt;
 import java.io.IOException;
 import java.net.URI;
 import java.util.Map;
+
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.heron.api.bolt.OutputCollector;
+import org.apache.heron.api.topology.TopologyContext;
+import org.apache.heron.api.tuple.Tuple;
 import org.apache.heron.hdfs.bolt.format.FileNameFormat;
 import org.apache.heron.hdfs.bolt.format.RecordFormat;
 import org.apache.heron.hdfs.bolt.rotation.FileRotationPolicy;
@@ -26,9 +30,6 @@ import org.apache.heron.hdfs.common.AbstractHDFSWriter;
 import org.apache.heron.hdfs.common.HDFSWriter;
 import org.apache.heron.hdfs.common.Partitioner;
 import org.apache.heron.hdfs.common.rotation.RotationAction;
-import org.apache.heron.task.OutputCollector;
-import org.apache.heron.api.topology.TopologyContext;
-import org.apache.heron.api.tuple.Tuple;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

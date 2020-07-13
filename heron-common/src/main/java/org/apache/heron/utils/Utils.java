@@ -18,8 +18,6 @@
 
 package org.apache.heron.utils;
 
-import com.google.common.annotations.VisibleForTesting;
-import com.google.common.collect.Lists;
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -29,7 +27,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.ObjectOutputStream;
-import java.io.OutputStreamWriter;
 import java.io.UnsupportedEncodingException;
 import java.lang.Thread.UncaughtExceptionHandler;
 import java.lang.management.ManagementFactory;
@@ -61,9 +58,13 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
+
 import org.apache.heron.Config;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.Lists;
 
 public class Utils {
     public static final Logger LOG = LoggerFactory.getLogger(Utils.class);
@@ -1003,4 +1004,17 @@ public class Utils {
         }
     }
 
+
+    public static Map<String, Object> putTickFrequencyIntoComponentConfig(Map<String, Object> conf, int tickFreqSecs) {
+        if (conf == null) {
+            conf = new Config();
+        }
+
+        if (tickFreqSecs > 0) {
+            LOG.info("Enabling tick tuple with interval [{}]", tickFreqSecs);
+            conf.put(Config.TOPOLOGY_TICK_TUPLE_FREQ_SECS, tickFreqSecs);
+        }
+
+        return conf;
+    }
 }
