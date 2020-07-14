@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -16,32 +16,16 @@
  * limitations under the License.
  */
 
-package org.apache.heron.hdfs.security;
-
-import static org.apache.heron.hdfs.security.HdfsSecurityUtil.HDFS_CREDENTIALS;
-
-import java.util.Map;
-
-import org.apache.heron.hdfs.common.AbstractHadoopAutoCreds;
+package org.apache.heron.hdfs.common;
 
 /**
- * Auto credentials plugin for HDFS implementation. This class provides a way to automatically
- * push credentials to a topology and to retrieve them in the worker.
+ * Provider interface for credential key.
  */
-@SuppressWarnings("checkstyle:AbbreviationAsWordInName")
-public class AutoHDFS extends AbstractHadoopAutoCreds {
-    @Override
-    public void doPrepare(Map<String, Object> conf) {
-    }
-
-    @Override
-    protected String getConfigKeyString() {
-        return HdfsSecurityUtil.HDFS_CREDENTIALS_CONFIG_KEYS;
-    }
-
-    @Override
-    public String getCredentialKey(String configKey) {
-        return HDFS_CREDENTIALS + configKey;
-    }
+public interface CredentialKeyProvider {
+    /**
+     * The lookup key for the config key string.
+     *
+     * @return the config key string
+     */
+    String getCredentialKey(String configKey);
 }
-

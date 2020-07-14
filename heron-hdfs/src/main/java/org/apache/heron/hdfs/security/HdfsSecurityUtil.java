@@ -28,7 +28,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.security.SecurityUtil;
 import org.apache.hadoop.security.UserGroupInformation;
-import org.apache.storm.security.auth.kerberos.AutoTGT;
+import org.apache.heron.hdfs.security.auth.kerberos.AutoTGT;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
