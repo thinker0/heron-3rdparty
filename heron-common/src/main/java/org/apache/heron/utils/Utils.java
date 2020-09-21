@@ -18,6 +18,8 @@
 
 package org.apache.heron.utils;
 
+import static org.apache.heron.api.Config.TOPOLOGY_TICK_TUPLE_FREQ_MS;
+
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -977,4 +979,13 @@ public class Utils {
         }
     }
 
+
+    public static Map<String, Object> putTickFrequencyIntoComponentConfig(Map<String, Object> conf, int tickFreqSecs) {
+        if (tickFreqSecs > 0) {
+            LOG.info("Enabling tick tuple with interval [{}]", tickFreqSecs);
+            conf.put(TOPOLOGY_TICK_TUPLE_FREQ_MS, tickFreqSecs);
+        }
+
+        return conf;
+    }
 }
