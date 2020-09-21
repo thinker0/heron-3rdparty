@@ -24,7 +24,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
 import javax.security.auth.Subject;
 import javax.xml.bind.DatatypeConverter;
 
@@ -34,6 +33,7 @@ import org.apache.hadoop.security.Credentials;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.security.token.Token;
 import org.apache.hadoop.security.token.TokenIdentifier;
+import org.apache.heron.hdfs.security.auth.IAutoCredentials;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

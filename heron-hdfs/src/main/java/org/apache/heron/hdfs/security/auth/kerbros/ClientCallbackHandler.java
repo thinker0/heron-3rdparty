@@ -10,7 +10,7 @@
  * and limitations under the License.
  */
 
-package org.apache.heron.hdfs.security.auth.kerberos;
+package org.apache.heron.hdfs.security.auth.kerbros;
 
 import java.io.IOException;
 import java.util.Map;
@@ -24,7 +24,7 @@ import javax.security.auth.login.AppConfigurationEntry;
 import javax.security.auth.login.Configuration;
 import javax.security.sasl.AuthorizeCallback;
 
-import org.apache.heron.hdfs.security.ClientAuthUtils;
+import org.apache.heron.hdfs.security.auth.ClientAuthUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

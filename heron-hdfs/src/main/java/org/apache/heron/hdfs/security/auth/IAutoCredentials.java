@@ -13,7 +13,6 @@
 package org.apache.heron.hdfs.security.auth;
 
 import java.util.Map;
-
 import javax.security.auth.Subject;
 
 /**

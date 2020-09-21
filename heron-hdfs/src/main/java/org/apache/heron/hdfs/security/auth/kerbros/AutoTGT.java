@@ -10,9 +10,11 @@
  * and limitations under the License.
  */
 
-package org.apache.heron.hdfs.security.auth.kerberos;
+package org.apache.heron.hdfs.security.auth.kerbros;
 
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
+import java.security.Principal;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -28,9 +30,9 @@ import javax.security.auth.login.Configuration;
 import javax.security.auth.login.LoginContext;
 import javax.xml.bind.DatatypeConverter;
 
-import org.apache.heron.api.topology.TopologyContext;
-import org.apache.heron.hdfs.security.ClientAuthUtils;
+import org.apache.heron.hdfs.security.auth.ClientAuthUtils;
 import org.apache.heron.hdfs.security.auth.IAutoCredentials;
+import org.apache.heron.hdfs.security.auth.ICredentialsRenewer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,7 +40,7 @@ import org.slf4j.LoggerFactory;
  * Automatically take a user's TGT, and push it, and renew it in Nimbus.
  */
 @SuppressWarnings("checkstyle:AbbreviationAsWordInName")
-public class AutoTGT implements IAutoCredentials, ICredentialsRenewer, IMetricsRegistrant {
+public class AutoTGT implements IAutoCredentials, ICredentialsRenewer {
     protected static final AtomicReference<KerberosTicket> kerbTicket = new AtomicReference<>();
     private static final Logger LOG = LoggerFactory.getLogger(AutoTGT.class);
     private static final float TICKET_RENEW_WINDOW = 0.80f;
@@ -112,7 +114,6 @@ public class AutoTGT implements IAutoCredentials, ICredentialsRenewer, IMetricsR
         LOG.info("Got a Subject " + s);
     }
 
-    @Override
     public void prepare(Map<String, Object> conf) {
         this.conf = conf;
     }
@@ -208,16 +209,35 @@ public class AutoTGT implements IAutoCredentials, ICredentialsRenewer, IMetricsR
                 return;
             }
 
-            LOG.info("Invoking Hadoop UserGroupInformation.loginUserFromSubject.");
-            Method login = ugi.getMethod("loginUserFromSubject", Subject.class);
-            login.invoke(null, subject);
+            // We are just trying to do the following:
+            //
+            // Configuration conf = new Configuration();
+            // HadoopKerberosName.setConfiguration(conf);
+            // subject.getPrincipals().add(new User(tgt.getClient().toString(), AuthenticationMethod.KERBEROS, null));
 
-            //Refer to STORM-3606 for details
-            LOG.warn("UserGroupInformation.loginUserFromSubject will spawn a TGT renewal thread (\"TGT Renewer for <username>\") "
-                    + "to execute \"kinit -R\" command some time before the current TGT expires. "
-                    + "It will fail because TGT is not in the local TGT cache and the thread will eventually abort. "
-                    + "Exceptions from this TGT renewal thread can be ignored. Note: TGT for the Worker is kept in memory. "
-                    + "Please refer to STORM-3606 for detailed explanations");
+            Class<?> confClass = Class.forName("org.apache.hadoop.conf.Configuration");
+            Constructor confCons = confClass.getConstructor();
+            Object conf = confCons.newInstance();
+            Class<?> hknClass = Class.forName("org.apache.hadoop.security.HadoopKerberosName");
+            Method hknSetConf = hknClass.getMethod("setConfiguration", confClass);
+            hknSetConf.invoke(null, conf);
+
+            Class<?> authMethodClass = Class.forName("org.apache.hadoop.security.UserGroupInformation$AuthenticationMethod");
+            Object kerbAuthMethod = null;
+            for (Object authMethod : authMethodClass.getEnumConstants()) {
+                if ("KERBEROS".equals(authMethod.toString())) {
+                    kerbAuthMethod = authMethod;
+                    break;
+                }
+            }
+
+            Class<?> userClass = Class.forName("org.apache.hadoop.security.User");
+            Constructor userCons = userClass.getConstructor(String.class, authMethodClass, LoginContext.class);
+            userCons.setAccessible(true);
+            String name = getTGT(subject).getClient().toString();
+            Object user = userCons.newInstance(name, kerbAuthMethod, null);
+            subject.getPrincipals().add((Principal) user);
+
         } catch (Exception e) {
             LOG.error("Something went wrong while trying to initialize Hadoop through reflection. This version of hadoop "
                      + "may not be compatible.", e);
@@ -231,7 +251,8 @@ public class AutoTGT implements IAutoCredentials, ICredentialsRenewer, IMetricsR
     }
 
     @Override
-    public void renew(Map<String, String> credentials, Map<String, Object> topologyConf, String topologyOwnerPrincipal) {
+    public void renew(
+        Map<String, String> credentials, Map<String, Object> topologyConf, String topologyOwnerPrincipal) {
         this.credentials = credentials;
         KerberosTicket tgt = getTGT(credentials);
         if (tgt != null) {
@@ -258,13 +279,4 @@ public class AutoTGT implements IAutoCredentials, ICredentialsRenewer, IMetricsR
         return end - System.currentTimeMillis();
     }
 
-    @Override
-    public void registerMetrics(TopologyContext topoContext, Map<String, Object> topoConf) {
-        topoContext.registerGauge("TGT-TimeToExpiryMsecs", new Gauge<Long>() {
-            @Override
-            public Long getValue() {
-                return getMsecsUntilExpiration();
-            }
-        });
-    }
 }
