@@ -60,7 +60,6 @@
     <connection>scm:git:https://github.com/thinker0/heron-3party.git</connection>
     <developerConnection>scm:git:git@github.com:thinker0/heron-3party.git</developerConnection>
     <url>https://github.com/thinker0/heron-3party</url>
-    <tag>v1.0.3</tag>
   </scm>
 
   <dependencyManagement>
