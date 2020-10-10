@@ -69,18 +69,18 @@ public class KafkaSpout<K, V> extends BaseRichSpout {
     //Initial delay for the commit and assignment refresh timers
     public static final long TIMER_DELAY_MS = 500;
     private static final Logger LOG = LoggerFactory.getLogger(KafkaSpout.class);
-    private int metricsIntervalInSecs = 60;
-    private long previousKafkaMetricsUpdatedTimestamp = 0;
+    protected int metricsIntervalInSecs = 60;
+    protected long previousKafkaMetricsUpdatedTimestamp = 0;
 
     // Storm
     protected SpoutOutputCollector collector;
 
     // Kafka
-    private final KafkaSpoutConfig<K, V> kafkaSpoutConfig;
+    protected final KafkaSpoutConfig<K, V> kafkaSpoutConfig;
     private final ConsumerFactory<K, V> kafkaConsumerFactory;
     private final TopicAssigner topicAssigner;
-    private transient Consumer<K, V> consumer;
-    private transient Set<MetricName> reportedMetrics;
+    protected transient Consumer<K, V> consumer;
+    protected transient Set<MetricName> reportedMetrics;
 
     // Bookkeeping
     // Strategy to determine the fetch offset of the first realized by the spout upon activation
@@ -100,7 +100,7 @@ public class KafkaSpout<K, V> extends BaseRichSpout {
     // Always empty if processing guarantee is none or at-most-once
     private transient Set<KafkaSpoutMessageId> emitted;
     // Records that have been polled and are queued to be emitted in the nextTuple() call. One record is emitted per nextTuple()
-    private transient Map<TopicPartition, List<ConsumerRecord<K, V>>> waitingToEmit;
+    protected transient Map<TopicPartition, List<ConsumerRecord<K, V>>> waitingToEmit;
     // Triggers when an assignment should be refreshed
     private transient Timer refreshAssignmentTimer;
     private transient TopologyContext context;
