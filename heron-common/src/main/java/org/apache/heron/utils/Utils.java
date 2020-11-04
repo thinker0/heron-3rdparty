@@ -981,6 +981,9 @@ public class Utils {
 
 
     public static Map<String, Object> putTickFrequencyIntoComponentConfig(Map<String, Object> conf, int tickFreqSecs) {
+        if (conf == null) {
+            conf = new HashMap<>();
+        }
         if (tickFreqSecs > 0) {
             LOG.info("Enabling tick tuple with interval [{}]", tickFreqSecs);
             conf.put(TOPOLOGY_TICK_TUPLE_FREQ_MS, tickFreqSecs);
