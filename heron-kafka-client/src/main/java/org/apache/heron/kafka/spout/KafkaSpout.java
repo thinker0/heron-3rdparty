@@ -380,7 +380,7 @@ public class KafkaSpout<K, V> extends BaseRichSpout {
             .anyMatch(list -> !list.isEmpty());
     }
 
-    private void setWaitingToEmit(ConsumerRecords<K, V> consumerRecords) {
+    protected void setWaitingToEmit(ConsumerRecords<K, V> consumerRecords) {
         for (TopicPartition tp : consumerRecords.partitions()) {
             waitingToEmit.put(tp, new LinkedList<>(consumerRecords.records(tp)));
         }

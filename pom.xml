@@ -10,13 +10,14 @@
 
   <groupId>com.github.thinker0.heron</groupId>
   <artifactId>heron-3rdparty</artifactId>
-  <version>1.0.3</version>
+  <version>1.0.4</version>
   <packaging>pom</packaging>
 
   <modules>
     <module>heron-kafka-client</module>
     <module>heron-pulsar-client</module>
     <module>heron-common</module>
+    <module>heron-hdfs</module>
   </modules>
 
   <properties>
@@ -59,7 +60,6 @@
     <connection>scm:git:https://github.com/thinker0/heron-3party.git</connection>
     <developerConnection>scm:git:git@github.com:thinker0/heron-3party.git</developerConnection>
     <url>https://github.com/thinker0/heron-3party</url>
-    <tag>v1.0.3</tag>
   </scm>
 
   <dependencyManagement>
@@ -108,7 +108,16 @@
         <version>${testng.version}</version>
         <scope>test</scope>
       </dependency>
-
+      <dependency>
+        <groupId>com.google.guava</groupId>
+        <artifactId>guava</artifactId>
+        <version>27.0.1-jre</version>
+      </dependency>
+      <dependency>
+        <groupId>com.esotericsoftware</groupId>
+        <artifactId>kryo</artifactId>
+        <version>4.0.2</version>
+      </dependency>
     </dependencies>
   </dependencyManagement>
 

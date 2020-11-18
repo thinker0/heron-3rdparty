@@ -18,8 +18,8 @@
 
 package org.apache.heron.utils;
 
-import com.google.common.annotations.VisibleForTesting;
-import com.google.common.collect.Lists;
+import static org.apache.heron.api.Config.TOPOLOGY_TICK_TUPLE_FREQ_MS;
+
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -29,7 +29,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.ObjectOutputStream;
-import java.io.OutputStreamWriter;
 import java.io.UnsupportedEncodingException;
 import java.lang.Thread.UncaughtExceptionHandler;
 import java.lang.management.ManagementFactory;
@@ -61,9 +60,12 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
-import org.apache.heron.Config;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.Lists;
 
 public class Utils {
     public static final Logger LOG = LoggerFactory.getLogger(Utils.class);
@@ -411,18 +413,6 @@ public class Utils {
             }
         }
         return ret.toString();
-    }
-
-    /**
-     * Is the topology configured to have ZooKeeper authentication.
-     *
-     * @param conf the topology configuration
-     * @return true if ZK is configured else false
-     */
-    public static boolean isZkAuthenticationConfiguredTopology(Map<String, Object> conf) {
-        return (conf != null
-                && conf.get(Config.STORM_ZOOKEEPER_TOPOLOGY_AUTH_SCHEME) != null
-                && !((String) conf.get(Config.STORM_ZOOKEEPER_TOPOLOGY_AUTH_SCHEME)).isEmpty());
     }
 
     public static void handleUncaughtException(Throwable t) {
@@ -791,20 +781,6 @@ public class Utils {
         return file.isDirectory();
     }
 
-    /**
-     * Is the cluster configured to interact with ZooKeeper in a secure way? This only works when called from within Nimbus or a Supervisor
-     * process.
-     *
-     * @param conf the storm configuration, not the topology configuration
-     * @return true if it is configured else false.
-     */
-    public static boolean isZkAuthenticationConfiguredStormServer(Map<String, Object> conf) {
-        return null != System.getProperty("java.security.auth.login.config")
-               || (conf != null
-                   && conf.get(Config.STORM_ZOOKEEPER_AUTH_SCHEME) != null
-                   && !((String) conf.get(Config.STORM_ZOOKEEPER_AUTH_SCHEME)).isEmpty());
-    }
-
     public static double nullToZero(Double v) {
         return (v != null ? v : 0);
     }
@@ -958,7 +934,7 @@ public class Utils {
         if (localConf == null) {
             return memoizedLocalHostname();
         }
-        Object hostnameString = localConf.get(Config.STORM_LOCAL_HOSTNAME);
+        Object hostnameString = localConf.get("storm.local.hostname");
         if (hostnameString == null || hostnameString.equals("")) {
             return memoizedLocalHostname();
         }
@@ -1003,4 +979,16 @@ public class Utils {
         }
     }
 
+
+    public static Map<String, Object> putTickFrequencyIntoComponentConfig(Map<String, Object> conf, int tickFreqSecs) {
+        if (conf == null) {
+            conf = new HashMap<>();
+        }
+        if (tickFreqSecs > 0) {
+            LOG.info("Enabling tick tuple with interval [{}]", tickFreqSecs);
+            conf.put(TOPOLOGY_TICK_TUPLE_FREQ_MS, tickFreqSecs);
+        }
+
+        return conf;
+    }
 }
