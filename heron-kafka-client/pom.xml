@@ -22,7 +22,7 @@
   <parent>
     <groupId>com.github.thinker0.heron</groupId>
     <artifactId>heron-3rdparty</artifactId>
-    <version>1.0.4-SNAPSHOT</version>
+    <version>1.0.4</version>
     <relativePath>..</relativePath>
   </parent>
 
