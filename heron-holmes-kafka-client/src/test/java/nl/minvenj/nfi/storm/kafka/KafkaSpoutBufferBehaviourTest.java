@@ -43,16 +43,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.SortedMap;
 
-import kafka.consumer.ConsumerIterator;
-import kafka.consumer.ConsumerTimeoutException;
-import kafka.consumer.KafkaStream;
-import kafka.javaapi.consumer.ConsumerConnector;
-import kafka.message.MessageAndMetadata;
 import org.apache.heron.api.spout.RawScheme;
 import org.apache.heron.api.spout.Scheme;
 import org.apache.heron.api.spout.SpoutOutputCollector;
-import org.apache.storm.topology.OutputFieldsDeclarer;
-import org.apache.storm.tuple.Fields;
+import org.apache.heron.api.topology.OutputFieldsDeclarer;
+import org.apache.heron.api.tuple.Fields;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;

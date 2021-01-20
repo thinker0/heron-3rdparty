@@ -24,7 +24,9 @@ import static nl.minvenj.nfi.storm.kafka.util.ConfigUtils.createKafkaConfig;
 import static nl.minvenj.nfi.storm.kafka.util.ConfigUtils.getMaxBufSize;
 import static nl.minvenj.nfi.storm.kafka.util.ConfigUtils.getTopic;
 
+import java.time.Duration;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -40,7 +42,10 @@ import org.apache.heron.api.spout.SpoutOutputCollector;
 import org.apache.heron.api.topology.OutputFieldsDeclarer;
 import org.apache.heron.api.topology.TopologyContext;
 import org.apache.kafka.clients.consumer.Consumer;
-import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.common.KafkaException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -91,9 +96,9 @@ public class KafkaSpout implements IRichSpout {
     protected String _topic;
     protected int _bufSize;
     protected FailHandler _failHandler;
-    protected ConsumerIterator<byte[], byte[]> _iterator;
+    protected ConsumerRecords<byte[], byte[]> _iterator;
     protected transient SpoutOutputCollector _collector;
-    protected transient Consumer _consumer;
+    protected transient Consumer<byte[], byte[]> _consumer;
 
     /**
      * Creates a new kafka spout to be submitted in a storm topology. Configuration is read from storm config when the
@@ -166,7 +171,9 @@ public class KafkaSpout implements IRichSpout {
         LOG.info("connecting kafka client to zookeeper at {} as client group {}",
             consumerConfig.getProperty("zookeeper.connect"),
             consumerConfig.getProperty("group.id"));
-        _consumer = Consumer.createJavaConsumerConnector(new ConsumerConfig(consumerConfig));
+        // _consumer = Consumer.createJavaConsumerConnector(new ConsumerConfig(consumerConfig));
+        _consumer = new KafkaConsumer<>(consumerConfig);
+        _consumer.subscribe(Collections.singletonList(_topic));
     }
 
     /**
@@ -180,27 +187,24 @@ public class KafkaSpout implements IRichSpout {
             throw new IllegalStateException("cannot fill buffer when buffer or pending messages are non-empty");
         }
 
-        if (_iterator == null) {
-            // create a stream of messages from _consumer using the streams as defined on construction
-            final Map<String, List<KafkaStream<byte[], byte[]>>> streams = _consumer.createMessageStreams(Collections.singletonMap(_topic, 1));
-            _iterator = streams.get(_topic).get(0).iterator();
-        }
-
         // We'll iterate the stream in a try-clause; kafka stream will poll its client channel for the next message,
         // throwing a ConsumerTimeoutException when the configured timeout is exceeded.
         try {
+            // create a stream of messages from _consumer using the streams as defined on construction
+            ConsumerRecords<byte[], byte[]> consumerRecords = _consumer.poll(Duration.ofMillis(100));
+            Iterator<ConsumerRecord<byte[], byte[]>> iterator = consumerRecords.iterator();
             int size = 0;
-            while (size < _bufSize && _iterator.hasNext()) {
-                final MessageAndMetadata<byte[], byte[]> message = _iterator.next();
+            while (size < _bufSize && iterator.hasNext()) {
+                final ConsumerRecord<byte[], byte[]> message = iterator.next();
                 final KafkaMessageId id = new KafkaMessageId(message.partition(), message.offset());
-                _inProgress.put(id, message.message());
+                _inProgress.put(id, message.value());
                 size++;
             }
         }
-        catch (final InvalidMessageException e) {
+        catch (final KafkaException e) {
             LOG.warn(e.getMessage(), e);
         }
-        catch (final ConsumerTimeoutException e) {
+        catch (final Exception e) {
             // ignore, storm will call nextTuple again at some point in the near future
             // timeout does *not* mean that no messages were read (state is checked below)
         }
@@ -258,7 +262,7 @@ public class KafkaSpout implements IRichSpout {
 
         if (_consumer != null) {
             try {
-                _consumer.shutdown();
+                _consumer.close();
             }
             finally {
                 _consumer = null;
@@ -308,7 +312,7 @@ public class KafkaSpout implements IRichSpout {
                 // commit offsets to zookeeper when pending is now empty
                 // (buffer will be filled on next call to nextTuple())
                 LOG.debug("all pending messages acknowledged, committing client offsets");
-                _consumer.commitOffsets();
+                _consumer.commitSync();
             }
             // notify fail handler of tuple success
             _failHandler.ack(id);

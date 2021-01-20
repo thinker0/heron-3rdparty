@@ -28,7 +28,7 @@
 
     <slf4j.version>1.7.26</slf4j.version>
 
-    <kafka.client.version>2.5.0</kafka.client.version>
+    <kafka.client.version>2.7.0</kafka.client.version>
     <pulsar.version>2.6.0</pulsar.version>
     <jackson.version>2.9.8</jackson.version>
     <jackson.version.databind>${jackson.version}</jackson.version.databind>
