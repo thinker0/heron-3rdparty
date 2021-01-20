@@ -18,6 +18,7 @@
     <module>heron-pulsar-client</module>
     <module>heron-common</module>
     <module>heron-hdfs</module>
+    <module>heron-holmes-kafka-client</module>
   </modules>
 
   <properties>
