@@ -10,7 +10,7 @@
 
   <groupId>com.github.thinker0.heron</groupId>
   <artifactId>heron-3rdparty</artifactId>
-  <version>1.0.4</version>
+  <version>1.0.4.1-SNAPSHOT</version>
   <packaging>pom</packaging>
 
   <modules>
@@ -27,12 +27,12 @@
 
     <slf4j.version>1.7.26</slf4j.version>
 
-    <kafka.client.version>2.5.0</kafka.client.version>
-    <pulsar.version>2.6.0</pulsar.version>
+    <kafka.client.version>2.7.0</kafka.client.version>
+    <pulsar.version>2.7.1</pulsar.version>
     <jackson.version>2.9.8</jackson.version>
     <jackson.version.databind>${jackson.version}</jackson.version.databind>
 
-    <heron.version>0.20.1-incubating</heron.version>
+    <heron.version>0.20.3-incubating</heron.version>
     <commons-lang.version>2.6</commons-lang.version>
 
     <gitflow.version>1.14.0</gitflow.version>
