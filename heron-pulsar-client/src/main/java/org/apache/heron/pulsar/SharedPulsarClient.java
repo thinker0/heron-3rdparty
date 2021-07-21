@@ -99,9 +99,9 @@ public class SharedPulsarClient {
                 } catch (CompletionException e) {
                     throw (PulsarClientException) e.getCause();
                 }
-                LOG.info("[{}] Created a new Pulsar Consumer on {}", componentId, consumerConf.getSingleTopic());
+                LOG.info("[{}] Created a new Pulsar Consumer on {}", componentId, consumerConf.getTopicNames());
             } else {
-                LOG.info("[{}] Using a shared consumer on {}", componentId, consumerConf.getSingleTopic());
+                LOG.info("[{}] Using a shared consumer on {}", componentId, consumerConf.getTopicNames());
             }
         }
         return consumer;
@@ -116,9 +116,9 @@ public class SharedPulsarClient {
                 } catch (CompletionException e) {
                     throw (PulsarClientException) e.getCause();
                 }
-                LOG.info("[{}] Created a new Pulsar reader on {}", componentId, readerConf.getTopicName());
+                LOG.info("[{}] Created a new Pulsar reader on {}", componentId, readerConf.getTopicNames());
             } else {
-                LOG.info("[{}] Using a shared reader on {}", componentId, readerConf.getTopicName());
+                LOG.info("[{}] Using a shared reader on {}", componentId, readerConf.getTopicNames());
             }
         }
         return reader;

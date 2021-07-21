@@ -19,6 +19,11 @@
 package org.apache.heron.pulsar;
 
 import java.io.Serializable;
+import java.util.Objects;
+import java.util.Set;
+import java.util.regex.Pattern;
+
+import com.beust.jcommander.Strings;
 
 /**
  * Class used to specify pulsar storm configurations like service url and topic
@@ -36,6 +41,8 @@ public class PulsarHeronConfiguration implements Serializable {
 
     private String serviceUrl = null;
     private String topic = null;
+    private Set<String> topicNames = null;
+    private Pattern topicPattern = null;
     private int metricsTimeIntervalInSecs = DEFAULT_METRICS_TIME_INTERVAL_IN_SECS;
 
     /**
@@ -72,6 +79,23 @@ public class PulsarHeronConfiguration implements Serializable {
     }
 
     /**
+     * @return the topic name for the producer/consumer
+     */
+    public Pattern getTopicPattern() {
+        return topicPattern;
+    }
+
+    /**
+     * Sets the topic name for the producer/consumer. It should be of the format
+     * {persistent|non-persistent}://{property}/{cluster}/{namespace}/{topic}
+     *
+     * @param topicPattern
+     */
+    public void setTopicPattern(Pattern topicPattern) {
+        this.topicPattern = topicPattern;
+    }
+
+    /**
      * @return the time interval in seconds for metrics generation
      */
     public int getMetricsTimeIntervalInSecs() {
@@ -85,6 +109,30 @@ public class PulsarHeronConfiguration implements Serializable {
      */
     public void setMetricsTimeIntervalInSecs(int metricsTimeIntervalInSecs) {
         this.metricsTimeIntervalInSecs = metricsTimeIntervalInSecs;
+    }
+
+    public Set<String> getTopicNames() {
+        return topicNames;
+    }
+
+    public void setTopicNames(Set<String> topicNames) {
+        this.topicNames = topicNames;
+    }
+
+    /**
+     * Use only debug
+     * @return string
+     */
+    String getTopicNameOrPattern() {
+        final Set<String> topicNames = getTopicNames();
+        if (Objects.nonNull(topicNames)) {
+            return Strings.join(",", topicNames.toArray());
+        }
+        final Pattern topicPattern = getTopicPattern();
+        if (Objects.nonNull(topicPattern)) {
+            return topicPattern.pattern();
+        }
+        return getTopic();
     }
 
 }

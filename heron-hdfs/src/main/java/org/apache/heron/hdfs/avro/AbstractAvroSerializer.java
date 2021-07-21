@@ -12,11 +12,8 @@
 
 package org.apache.heron.hdfs.avro;
 
-import com.esotericsoftware.kryo.Kryo;
-import com.esotericsoftware.kryo.Serializer;
-import com.esotericsoftware.kryo.io.Input;
-import com.esotericsoftware.kryo.io.Output;
 import java.io.IOException;
+
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericContainer;
 import org.apache.avro.generic.GenericDatumReader;
@@ -25,6 +22,11 @@ import org.apache.avro.io.BinaryEncoder;
 import org.apache.avro.io.Decoder;
 import org.apache.avro.io.DecoderFactory;
 import org.apache.avro.io.EncoderFactory;
+
+import com.esotericsoftware.kryo.Kryo;
+import com.esotericsoftware.kryo.Serializer;
+import com.esotericsoftware.kryo.io.Input;
+import com.esotericsoftware.kryo.io.Output;
 
 //Generously adapted from:
 //https://github.com/kijiproject/kiji-express/blob/master/kiji-express/src/main/scala/org/kiji/express/flow/framework/serialization
@@ -57,7 +59,7 @@ public abstract class AbstractAvroSerializer extends Serializer<GenericContainer
     }
 
     @Override
-    public GenericContainer read(Kryo kryo, Input input, Class<GenericContainer> someClass) {
+    public GenericContainer read(Kryo kryo, Input input, Class<? extends GenericContainer> someClass) {
         Schema theSchema = this.getSchema(input.readString());
         GenericDatumReader<GenericContainer> reader = new GenericDatumReader<>(theSchema);
         Decoder decoder = DecoderFactory
