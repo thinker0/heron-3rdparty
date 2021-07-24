@@ -50,8 +50,9 @@ public class PulsarHeronConfiguration implements Serializable {
      *
      * @param serviceUrl
      */
-    public void setServiceUrl(String serviceUrl) {
+    public PulsarHeronConfiguration setServiceUrl(String serviceUrl) {
         this.serviceUrl = serviceUrl;
+        return this;
     }
 
     /**
@@ -67,8 +68,9 @@ public class PulsarHeronConfiguration implements Serializable {
      *
      * @param topic
      */
-    public void setTopic(String topic) {
+    public PulsarHeronConfiguration setTopic(String topic) {
         this.topic = topic;
+        return this;
     }
 
     /**
@@ -83,8 +85,9 @@ public class PulsarHeronConfiguration implements Serializable {
      *
      * @param metricsTimeIntervalInSecs
      */
-    public void setMetricsTimeIntervalInSecs(int metricsTimeIntervalInSecs) {
+    public PulsarHeronConfiguration setMetricsTimeIntervalInSecs(int metricsTimeIntervalInSecs) {
         this.metricsTimeIntervalInSecs = metricsTimeIntervalInSecs;
+        return this;
     }
 
 }

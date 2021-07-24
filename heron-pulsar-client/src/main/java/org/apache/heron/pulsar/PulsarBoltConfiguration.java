@@ -50,8 +50,9 @@ public class PulsarBoltConfiguration extends PulsarHeronConfiguration {
      *
      * @param mapper
      */
-    public void setTupleToMessageMapper(TupleToMessageMapper mapper) {
+    public PulsarBoltConfiguration setTupleToMessageMapper(TupleToMessageMapper mapper) {
         this.tupleToMessageMapper = Objects.requireNonNull(mapper);
+        return this;
     }
 
 }

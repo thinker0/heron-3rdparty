@@ -64,8 +64,9 @@ public class PulsarSpoutConfiguration extends PulsarHeronConfiguration {
      *
      * @param subscriptionName
      */
-    public void setSubscriptionName(String subscriptionName) {
+    public PulsarSpoutConfiguration setSubscriptionName(String subscriptionName) {
         this.subscriptionName = subscriptionName;
+        return this;
     }
 
     public SubscriptionType getSubscriptionType() {
@@ -91,8 +92,9 @@ public class PulsarSpoutConfiguration extends PulsarHeronConfiguration {
      *
      * @param mapper
      */
-    public void setMessageToValuesMapper(MessageToValuesMapper mapper) {
+    public PulsarSpoutConfiguration setMessageToValuesMapper(MessageToValuesMapper mapper) {
         this.messageToValuesMapper = Objects.requireNonNull(mapper);
+        return this;
     }
 
     /**
@@ -113,8 +115,9 @@ public class PulsarSpoutConfiguration extends PulsarHeronConfiguration {
      * @param failedRetriesTimeout
      * @param unit
      */
-    public void setFailedRetriesTimeout(long failedRetriesTimeout, TimeUnit unit) {
+    public PulsarSpoutConfiguration setFailedRetriesTimeout(long failedRetriesTimeout, TimeUnit unit) {
         this.failedRetriesTimeoutNano = unit.toNanos(failedRetriesTimeout);
+        return this;
     }
 
     /**
@@ -132,8 +135,9 @@ public class PulsarSpoutConfiguration extends PulsarHeronConfiguration {
      *
      * @param maxFailedRetries
      */
-    public void setMaxFailedRetries(int maxFailedRetries) {
+    public PulsarSpoutConfiguration setMaxFailedRetries(int maxFailedRetries) {
         this.maxFailedRetries = maxFailedRetries;
+        return this;
     }
 
     /**
@@ -149,8 +153,9 @@ public class PulsarSpoutConfiguration extends PulsarHeronConfiguration {
      *
      * @param sharedConsumerEnabled
      */
-    public void setSharedConsumerEnabled(boolean sharedConsumerEnabled) {
+    public PulsarSpoutConfiguration setSharedConsumerEnabled(boolean sharedConsumerEnabled) {
         this.sharedConsumerEnabled = sharedConsumerEnabled;
+        return this;
     }
     
     public boolean isAutoUnsubscribe() {
@@ -162,8 +167,9 @@ public class PulsarSpoutConfiguration extends PulsarHeronConfiguration {
      * 
      * @param autoUnsubscribe
      */
-    public void setAutoUnsubscribe(boolean autoUnsubscribe) {
+    public PulsarSpoutConfiguration setAutoUnsubscribe(boolean autoUnsubscribe) {
         this.autoUnsubscribe = autoUnsubscribe;
+        return this;
     }
     
     public boolean isDurableSubscription() {
@@ -176,8 +182,9 @@ public class PulsarSpoutConfiguration extends PulsarHeronConfiguration {
      * 
      * @param durableSubscription
      */
-    public void setDurableSubscription(boolean durableSubscription) {
+    public PulsarSpoutConfiguration setDurableSubscription(boolean durableSubscription) {
         this.durableSubscription = durableSubscription;
+        return this;
     }
 
     public MessageId getNonDurableSubscriptionReadPosition() {
@@ -189,7 +196,8 @@ public class PulsarSpoutConfiguration extends PulsarHeronConfiguration {
      * 
      * @param nonDurableSubscriptionReadPosition
      */
-    public void setNonDurableSubscriptionReadPosition(MessageId nonDurableSubscriptionReadPosition) {
+    public PulsarSpoutConfiguration setNonDurableSubscriptionReadPosition(MessageId nonDurableSubscriptionReadPosition) {
         this.nonDurableSubscriptionReadPosition = nonDurableSubscriptionReadPosition;
+        return this;
     }
 }
