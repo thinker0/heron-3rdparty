@@ -28,7 +28,7 @@
   <name>Heron HDFS adapter</name>
 
   <properties>
-    <hadoop.version>3.1.4</hadoop.version>
+    <hadoop.version>3.2.3</hadoop.version>
     <!-- Required downgrade by hadoop-hdfs 2.8.5 -->
     <guava.version>29.0-jre</guava.version>
   </properties>
