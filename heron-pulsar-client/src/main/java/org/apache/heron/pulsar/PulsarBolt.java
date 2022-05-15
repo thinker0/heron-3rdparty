@@ -19,6 +19,7 @@
 package org.apache.heron.pulsar;
 
 import static java.lang.String.format;
+import static org.apache.pulsar.shade.com.google.common.base.Preconditions.checkNotNull;
 
 import java.util.Map;
 import java.util.Objects;
@@ -27,7 +28,11 @@ import java.util.concurrent.ConcurrentMap;
 
 import org.apache.heron.api.bolt.BaseRichBolt;
 import org.apache.heron.api.bolt.OutputCollector;
+import org.apache.heron.api.metric.IMetric;
+import org.apache.heron.api.topology.OutputFieldsDeclarer;
 import org.apache.heron.api.topology.TopologyContext;
+import org.apache.heron.api.tuple.Tuple;
+import org.apache.heron.api.utils.TupleUtils;
 import org.apache.pulsar.client.api.ClientBuilder;
 import org.apache.pulsar.client.api.Producer;
 import org.apache.pulsar.client.api.PulsarClient;
@@ -37,15 +42,10 @@ import org.apache.pulsar.client.impl.ClientBuilderImpl;
 import org.apache.pulsar.client.impl.TypedMessageBuilderImpl;
 import org.apache.pulsar.client.impl.conf.ClientConfigurationData;
 import org.apache.pulsar.client.impl.conf.ProducerConfigurationData;
-import org.apache.heron.api.metric.IMetric;
-import org.apache.heron.api.topology.OutputFieldsDeclarer;
-import org.apache.heron.api.tuple.Tuple;
-import org.apache.heron.api.utils.TupleUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import static com.google.common.base.Preconditions.checkNotNull;
 
-public class PulsarBolt extends BaseRichBolt implements IMetric {
+public class PulsarBolt extends BaseRichBolt implements IMetric<Map<String, Object>> {
     /**
      *
      */
@@ -84,7 +84,7 @@ public class PulsarBolt extends BaseRichBolt implements IMetric {
         checkNotNull(clientConf, "client configuration can't be null");
         checkNotNull(producerConf, "producer configuration can't be null");
         Objects.requireNonNull(pulsarBoltConf.getServiceUrl());
-        Objects.requireNonNull(pulsarBoltConf.getTopic());
+        Objects.requireNonNull(pulsarBoltConf.getTopicNameOrPattern());
         Objects.requireNonNull(pulsarBoltConf.getTupleToMessageMapper());
         this.pulsarBoltConf = pulsarBoltConf;
         this.clientConf = clientConf;
@@ -185,8 +185,7 @@ public class PulsarBolt extends BaseRichBolt implements IMetric {
      * Helpers for metrics
      */
 
-    @SuppressWarnings({ "rawtypes" })
-    ConcurrentMap getMetrics() {
+    Map<String, Object> getMetrics() {
         metricsMap.put(NO_OF_MESSAGES_SENT, messagesSent);
         metricsMap.put(PRODUCER_RATE, ((double) messagesSent) / pulsarBoltConf.getMetricsTimeIntervalInSecs());
         metricsMap.put(PRODUCER_THROUGHPUT_BYTES,
@@ -199,10 +198,9 @@ public class PulsarBolt extends BaseRichBolt implements IMetric {
         messageSizeSent = 0;
     }
 
-    @SuppressWarnings("rawtypes")
     @Override
-    public Object getValueAndReset() {
-        ConcurrentMap metrics = getMetrics();
+    public Map<String, Object> getValueAndReset() {
+        Map<String, Object> metrics = getMetrics();
         resetMetrics();
         return metrics;
     }

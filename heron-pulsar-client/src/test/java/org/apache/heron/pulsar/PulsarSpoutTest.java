@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
+ * <p>
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * <p>
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -42,6 +42,7 @@ import org.apache.heron.api.spout.SpoutOutputCollector;
 import org.apache.heron.api.topology.OutputFieldsDeclarer;
 import org.apache.heron.api.topology.TopologyContext;
 import org.apache.heron.api.tuple.Values;
+import org.apache.heron.pulsar.PulsarSpout.SpoutConsumer;
 import org.apache.pulsar.client.api.ClientBuilder;
 import org.apache.pulsar.client.api.Consumer;
 import org.apache.pulsar.client.api.Message;
@@ -49,13 +50,11 @@ import org.apache.pulsar.client.api.Schema;
 import org.apache.pulsar.client.api.SubscriptionType;
 import org.apache.pulsar.client.impl.ClientBuilderImpl;
 import org.apache.pulsar.client.impl.MessageImpl;
-import org.apache.pulsar.common.api.proto.PulsarApi;
-import org.apache.heron.pulsar.PulsarSpout.SpoutConsumer;
+import org.apache.pulsar.common.api.proto.MessageMetadata;
+import org.apache.pulsar.shade.com.google.common.collect.Maps;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 import org.testng.annotations.Test;
-
-import com.google.common.collect.Maps;
 
 public class PulsarSpoutTest {
 
@@ -82,8 +81,8 @@ public class PulsarSpoutTest {
         ClientBuilder builder = spy(new ClientBuilderImpl());
         PulsarSpout spout = Mockito.spy(new PulsarSpout(conf, builder));
 
-        Message<byte[]> msg = new MessageImpl<>(conf.getTopic(), "1:1", Maps.newHashMap(),
-                new byte[0], Schema.BYTES, PulsarApi.MessageMetadata.newBuilder());
+        MessageImpl msg = new MessageImpl(conf.getTopic(), "1:1", Maps.newHashMap(),
+                                          new byte[0], Schema.BYTES, new MessageMetadata());
         Consumer<byte[]> consumer = mock(Consumer.class);
         SpoutConsumer spoutConsumer = new SpoutConsumer(consumer);
         CompletableFuture<Void> future = new CompletableFuture<>();
@@ -157,8 +156,8 @@ public class PulsarSpoutTest {
         when(client.getSharedConsumer(any())).thenReturn(consumer);
         instances.put(componentId, client);
 
-        Message<byte[]> msg = new MessageImpl<>(conf.getTopic(), "1:1", Maps.newHashMap(),
-                msgContent.getBytes(), Schema.BYTES, PulsarApi.MessageMetadata.newBuilder());
+        MessageImpl msg = new MessageImpl(conf.getTopic(), "1:1", Maps.newHashMap(),
+                                          msgContent.getBytes(), Schema.BYTES, new MessageMetadata());
         when(consumer.receive(anyInt(), any())).thenReturn(msg);
 
         spout.open(config, context, collector);
