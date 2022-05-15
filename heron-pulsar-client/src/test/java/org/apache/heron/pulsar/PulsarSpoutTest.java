@@ -51,10 +51,11 @@ import org.apache.pulsar.client.api.SubscriptionType;
 import org.apache.pulsar.client.impl.ClientBuilderImpl;
 import org.apache.pulsar.client.impl.MessageImpl;
 import org.apache.pulsar.common.api.proto.MessageMetadata;
-import org.apache.pulsar.shade.com.google.common.collect.Maps;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 import org.testng.annotations.Test;
+
+import com.google.common.collect.Maps;
 
 public class PulsarSpoutTest {
 

@@ -24,7 +24,8 @@
   <parent>
     <groupId>com.github.thinker0.heron</groupId>
     <artifactId>heron-3rdparty</artifactId>
-    <version>1.0.5-SNAPSHOT</version>
+    <version>1.0.5</version>
+    <relativePath>..</relativePath>
   </parent>
 
   <artifactId>heron-pulsar-client</artifactId>
@@ -39,6 +40,11 @@
       <groupId>org.apache.pulsar</groupId>
       <artifactId>pulsar-client</artifactId>
       <version>${pulsar.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>com.google.guava</groupId>
+      <artifactId>guava</artifactId>
     </dependency>
 
     <dependency>
