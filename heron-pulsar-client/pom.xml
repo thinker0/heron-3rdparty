@@ -25,7 +25,6 @@
     <groupId>com.github.thinker0.heron</groupId>
     <artifactId>heron-3rdparty</artifactId>
     <version>1.0.5-SNAPSHOT</version>
-    <relativePath>../pom.xml</relativePath>
   </parent>
 
   <artifactId>heron-pulsar-client</artifactId>
