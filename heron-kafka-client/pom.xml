@@ -23,7 +23,6 @@
     <groupId>com.github.thinker0.heron</groupId>
     <artifactId>heron-3rdparty</artifactId>
     <version>1.0.5</version>
-    <relativePath>..</relativePath>
   </parent>
 
   <artifactId>heron-kafka-client</artifactId>
@@ -79,7 +78,6 @@
     <dependency>
       <groupId>com.github.thinker0.heron</groupId>
       <artifactId>heron-common</artifactId>
-      <version>${project.version}</version>
     </dependency>
   </dependencies>
 

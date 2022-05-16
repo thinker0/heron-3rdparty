@@ -25,7 +25,6 @@
     <groupId>com.github.thinker0.heron</groupId>
     <artifactId>heron-3rdparty</artifactId>
     <version>1.0.5</version>
-    <relativePath>..</relativePath>
   </parent>
 
   <artifactId>heron-pulsar-client</artifactId>
@@ -41,21 +40,17 @@
       <artifactId>pulsar-client</artifactId>
       <version>${pulsar.version}</version>
     </dependency>
-
     <dependency>
       <groupId>com.google.guava</groupId>
       <artifactId>guava</artifactId>
     </dependency>
-
     <dependency>
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-api</artifactId>
     </dependency>
-
     <dependency>
       <groupId>org.apache.heron</groupId>
       <artifactId>heron-api</artifactId>
-      <version>${heron.version}</version>
     </dependency>
     <dependency>
       <groupId>org.mockito</groupId>
