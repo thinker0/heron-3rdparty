@@ -3,7 +3,7 @@
   <parent>
     <artifactId>heron-3rdparty</artifactId>
     <groupId>com.github.thinker0.heron</groupId>
-    <version>1.0.7-SNAPSHOT</version>
+    <version>1.0.7</version>
   </parent>
   <modelVersion>4.0.0</modelVersion>
 
