@@ -26,7 +26,7 @@
     <java.source.version>11</java.source.version>
 
     <slf4j.version>1.7.26</slf4j.version>
-    <guava.version>31.1-jre</guava.version>
+    <guava.version>32.0.0-jre</guava.version>
     <kafka.client.version>2.7.2</kafka.client.version>
     <pulsar.version>2.10.0</pulsar.version>
     <jackson.version>2.12.6</jackson.version>
