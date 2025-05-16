@@ -28,7 +28,7 @@
   <name>Heron HDFS adapter</name>
 
   <properties>
-    <hadoop.version>3.2.4</hadoop.version>
+    <hadoop.version>3.4.0</hadoop.version>
   </properties>
 
   <developers>
