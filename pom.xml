@@ -32,7 +32,7 @@
     <jackson.version>2.12.6</jackson.version>
     <jackson.version.databind>2.13.4.2</jackson.version.databind>
 
-    <heron.version>0.20.4-incubating</heron.version>
+    <heron.version>0.20.5-incubating</heron.version>
     <commons-lang.version>2.6</commons-lang.version>
 
     <gitflow.version>1.18.0</gitflow.version>
