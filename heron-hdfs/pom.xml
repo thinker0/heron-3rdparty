@@ -21,14 +21,14 @@
   <parent>
     <artifactId>heron-3rdparty</artifactId>
     <groupId>com.github.thinker0.heron</groupId>
-    <version>1.0.8-SNAPSHOT</version>
+    <version>1.0.8</version>
   </parent>
 
   <artifactId>heron-hdfs</artifactId>
   <name>Heron HDFS adapter</name>
 
   <properties>
-    <hadoop.version>3.2.4</hadoop.version>
+    <hadoop.version>3.4.0</hadoop.version>
   </properties>
 
   <developers>
