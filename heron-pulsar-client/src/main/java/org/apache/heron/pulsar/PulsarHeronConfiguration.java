@@ -23,8 +23,6 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.regex.Pattern;
 
-import com.beust.jcommander.Strings;
-
 /**
  * Class used to specify pulsar storm configurations like service url and topic
  *
@@ -126,7 +124,7 @@ public class PulsarHeronConfiguration implements Serializable {
     String getTopicNameOrPattern() {
         final Set<String> topicNames = getTopicNames();
         if (Objects.nonNull(topicNames)) {
-            return Strings.join(",", topicNames.toArray());
+            return String.join(",", topicNames);
         }
         final Pattern topicPattern = getTopicPattern();
         if (Objects.nonNull(topicPattern)) {
