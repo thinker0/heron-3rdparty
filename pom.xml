@@ -11,7 +11,7 @@
   <groupId>com.github.thinker0.heron</groupId>
   <artifactId>heron-3rdparty</artifactId>
   <name>Heron 3rd Library</name>
-  <version>1.0.8</version>
+  <version>1.0.9-SNAPSHOT</version>
   <packaging>pom</packaging>
 
   <modules>
