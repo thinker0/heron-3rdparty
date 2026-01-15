@@ -24,7 +24,7 @@
   <parent>
     <groupId>com.github.thinker0.heron</groupId>
     <artifactId>heron-3rdparty</artifactId>
-    <version>1.0.7</version>
+    <version>1.0.8</version>
   </parent>
 
   <artifactId>heron-pulsar-client</artifactId>
