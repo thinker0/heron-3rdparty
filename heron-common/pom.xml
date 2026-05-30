@@ -3,7 +3,7 @@
   <parent>
     <artifactId>heron-3rdparty</artifactId>
     <groupId>com.github.thinker0.heron</groupId>
-    <version>1.0.8</version>
+    <version>1.0.9</version>
   </parent>
   <modelVersion>4.0.0</modelVersion>
 
@@ -26,6 +26,10 @@
     <dependency>
       <groupId>com.esotericsoftware</groupId>
       <artifactId>kryo</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.prometheus</groupId>
+      <artifactId>prometheus-metrics-model</artifactId>
     </dependency>
   </dependencies>
 

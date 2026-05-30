@@ -25,6 +25,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.ObjectInputStream;
+import java.io.ObjectInputFilter;
 import java.io.ObjectOutputStream;
 import java.net.URI;
 import java.security.URIParameter;
@@ -189,26 +190,25 @@ public class ClientAuthUtils {
     }
 
     public static byte[] serializeKerberosTicket(KerberosTicket tgt) throws Exception {
-        ByteArrayOutputStream bao = new ByteArrayOutputStream();
-        ObjectOutputStream out = new ObjectOutputStream(bao);
-        out.writeObject(tgt);
-        out.flush();
-        out.close();
-        return bao.toByteArray();
+        try (ByteArrayOutputStream bao = new ByteArrayOutputStream();
+             ObjectOutputStream out = new ObjectOutputStream(bao)) {
+            out.writeObject(tgt);
+            out.flush();
+            return bao.toByteArray();
+        }
     }
 
     public static KerberosTicket deserializeKerberosTicket(byte[] tgtBytes) {
-        KerberosTicket ret;
-        try {
-
-            ByteArrayInputStream bin = new ByteArrayInputStream(tgtBytes);
-            ObjectInputStream in = new ObjectInputStream(bin);
-            ret = (KerberosTicket) in.readObject();
-            in.close();
+        try (ByteArrayInputStream bin = new ByteArrayInputStream(tgtBytes);
+             ObjectInputStream in = new ObjectInputStream(bin)) {
+            ObjectInputFilter filter = ObjectInputFilter.Config.createFilter(
+                "javax.security.auth.kerberos.KerberosTicket;javax.security.auth.kerberos.KerberosPrincipal;javax.security.auth.Subject;javax.security.auth.kerberos.KerberosKey;javax.security.auth.kerberos.EncryptionKey;java.util.*;java.lang.*;!*"
+            );
+            in.setObjectInputFilter(filter);
+            return (KerberosTicket) in.readObject();
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
-        return ret;
     }
 
     public static KerberosTicket cloneKerberosTicket(KerberosTicket kerberosTicket) {
