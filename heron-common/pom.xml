@@ -27,6 +27,10 @@
       <groupId>com.esotericsoftware</groupId>
       <artifactId>kryo</artifactId>
     </dependency>
+    <dependency>
+      <groupId>io.prometheus</groupId>
+      <artifactId>prometheus-metrics-model</artifactId>
+    </dependency>
   </dependencies>
 
   <build>
