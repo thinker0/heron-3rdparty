@@ -31,7 +31,7 @@
     <kafka.client.version>3.9.1</kafka.client.version>
     <pulsar.version>2.11.4</pulsar.version>
     <jackson.version>2.12.6</jackson.version>
-    <jackson.version.databind>2.13.5</jackson.version.databind>
+    <jackson.version.databind>2.22.0</jackson.version.databind>
 
     <heron.version>0.20.5-incubating</heron.version>
     <commons-lang.version>2.6</commons-lang.version>
