@@ -21,31 +21,26 @@ package org.apache.heron.pulsar;
 import java.util.Objects;
 
 /**
- * Class used to specify Pulsar bolt configuration
- *
- *
+ * Class used to specify Pulsar bolt configuration.
  */
 public class PulsarBoltConfiguration extends PulsarHeronConfiguration {
 
-    /**
-     *
-     */
     private static final long serialVersionUID = 1L;
 
     private TupleToMessageMapper tupleToMessageMapper = null;
 
     /**
-     * @return the mapper to convert storm tuples to a pulsar message
+     * @return the mapper to convert Heron tuples to a Pulsar message
      */
     public TupleToMessageMapper getTupleToMessageMapper() {
         return tupleToMessageMapper;
     }
 
     /**
-     * Sets the mapper to convert storm tuples to a pulsar message
+     * Sets the mapper to convert Heron tuples to a Pulsar message.
      * <p>
      * Note: If the mapper returns null, the message is not sent by the producer and is acked immediately on the
-     * collector
+     * collector.
      * </p>
      *
      * @param mapper
@@ -53,5 +48,4 @@ public class PulsarBoltConfiguration extends PulsarHeronConfiguration {
     public void setTupleToMessageMapper(TupleToMessageMapper mapper) {
         this.tupleToMessageMapper = Objects.requireNonNull(mapper);
     }
-
 }

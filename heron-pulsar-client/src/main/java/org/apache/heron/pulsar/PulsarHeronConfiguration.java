@@ -24,15 +24,10 @@ import java.util.Set;
 import java.util.regex.Pattern;
 
 /**
- * Class used to specify pulsar storm configurations like service url and topic
- *
- *
+ * Class used to specify Pulsar Heron configurations like service URL and topic.
  */
 public class PulsarHeronConfiguration implements Serializable {
 
-    /**
-     *
-     */
     private static final long serialVersionUID = 1L;
 
     public static final int DEFAULT_METRICS_TIME_INTERVAL_IN_SECS = 60;
@@ -51,7 +46,7 @@ public class PulsarHeronConfiguration implements Serializable {
     }
 
     /**
-     * Sets the service URL to connect to from the client
+     * Sets the service URL to connect to from the client.
      *
      * @param serviceUrl
      */
@@ -77,15 +72,14 @@ public class PulsarHeronConfiguration implements Serializable {
     }
 
     /**
-     * @return the topic name for the producer/consumer
+     * @return the topic pattern for the consumer
      */
     public Pattern getTopicPattern() {
         return topicPattern;
     }
 
     /**
-     * Sets the topic name for the producer/consumer. It should be of the format
-     * {persistent|non-persistent}://{property}/{cluster}/{namespace}/{topic}
+     * Sets the topic pattern for the consumer.
      *
      * @param topicPattern
      */
@@ -106,6 +100,9 @@ public class PulsarHeronConfiguration implements Serializable {
      * @param metricsTimeIntervalInSecs
      */
     public void setMetricsTimeIntervalInSecs(int metricsTimeIntervalInSecs) {
+        if (metricsTimeIntervalInSecs <= 0) {
+            throw new IllegalArgumentException("metricsTimeIntervalInSecs must be positive");
+        }
         this.metricsTimeIntervalInSecs = metricsTimeIntervalInSecs;
     }
 
@@ -118,19 +115,19 @@ public class PulsarHeronConfiguration implements Serializable {
     }
 
     /**
-     * Use only debug
-     * @return string
+     * Returns topic name, joined topic names, or regex pattern string.
+     *
+     * @return string representation of target topics
      */
     String getTopicNameOrPattern() {
-        final Set<String> topicNames = getTopicNames();
-        if (Objects.nonNull(topicNames)) {
-            return String.join(",", topicNames);
+        final Set<String> names = getTopicNames();
+        if (Objects.nonNull(names)) {
+            return String.join(",", names);
         }
-        final Pattern topicPattern = getTopicPattern();
-        if (Objects.nonNull(topicPattern)) {
-            return topicPattern.pattern();
+        final Pattern pattern = getTopicPattern();
+        if (Objects.nonNull(pattern)) {
+            return pattern.pattern();
         }
         return getTopic();
     }
-
 }
