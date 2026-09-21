@@ -18,6 +18,7 @@
  */
 package org.apache.heron.pulsar;
 
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.pulsar.client.api.Message;
@@ -39,8 +40,9 @@ public interface PulsarSpoutConsumer {
      * Ack the message async.
      * 
      * @param msg
+     * @return
      */
-    void acknowledgeAsync(Message<?> msg);
+    CompletableFuture<Void> acknowledgeAsync(Message<?> msg);
 
     /**
      * unsubscribe the consumer

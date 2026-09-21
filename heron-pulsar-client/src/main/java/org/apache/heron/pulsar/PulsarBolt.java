@@ -19,12 +19,14 @@
 package org.apache.heron.pulsar;
 
 import static java.lang.String.format;
-import static org.apache.pulsar.shade.com.google.common.base.Preconditions.checkNotNull;
+import static java.util.Objects.requireNonNull;
 
+import java.nio.ByteBuffer;
+import java.util.HashMap;
 import java.util.Map;
-import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.heron.api.bolt.BaseRichBolt;
 import org.apache.heron.api.bolt.OutputCollector;
@@ -46,13 +48,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class PulsarBolt extends BaseRichBolt implements IMetric<Map<String, Object>> {
-    /**
-     *
-     */
+
     private static final long serialVersionUID = 1L;
     private static final Logger LOG = LoggerFactory.getLogger(PulsarBolt.class);
 
     public static final String NO_OF_MESSAGES_SENT = "numberOfMessagesSent";
+    public static final String NO_OF_MESSAGES_FAILED = "numberOfMessagesFailed";
     public static final String PRODUCER_RATE = "producerRate";
     public static final String PRODUCER_THROUGHPUT_BYTES = "producerThroughput";
 
@@ -66,26 +67,29 @@ public class PulsarBolt extends BaseRichBolt implements IMetric<Map<String, Obje
     private String boltId;
     private OutputCollector collector;
     private Producer<byte[]> producer;
-    private volatile long messagesSent = 0;
-    private volatile long messageSizeSent = 0;
+    private final AtomicLong messagesSent = new AtomicLong();
+    private final AtomicLong messagesFailed = new AtomicLong();
+    private final AtomicLong messageSizeSent = new AtomicLong();
 
     public PulsarBolt(PulsarBoltConfiguration pulsarBoltConf) {
         this(pulsarBoltConf, PulsarClient.builder());
     }
 
     public PulsarBolt(PulsarBoltConfiguration pulsarBoltConf, ClientBuilder clientBuilder) {
-        this(pulsarBoltConf, ((ClientBuilderImpl) clientBuilder).getClientConfigurationData().clone(),
+        this(pulsarBoltConf,
+                ((ClientBuilderImpl) requireNonNull(clientBuilder, "clientBuilder cannot be null"))
+                        .getClientConfigurationData().clone(),
                 new ProducerConfigurationData());
     }
 
     public PulsarBolt(PulsarBoltConfiguration pulsarBoltConf, ClientConfigurationData clientConf,
             ProducerConfigurationData producerConf) {
-        checkNotNull(pulsarBoltConf, "bolt configuration can't be null");
-        checkNotNull(clientConf, "client configuration can't be null");
-        checkNotNull(producerConf, "producer configuration can't be null");
-        Objects.requireNonNull(pulsarBoltConf.getServiceUrl());
-        Objects.requireNonNull(pulsarBoltConf.getTopicNameOrPattern());
-        Objects.requireNonNull(pulsarBoltConf.getTupleToMessageMapper());
+        requireNonNull(pulsarBoltConf, "bolt configuration can't be null");
+        requireNonNull(clientConf, "client configuration can't be null");
+        requireNonNull(producerConf, "producer configuration can't be null");
+        requireNonNull(pulsarBoltConf.getServiceUrl(), "serviceUrl can't be null");
+        requireNonNull(pulsarBoltConf.getTopic(), "topic can't be null in PulsarBoltConfiguration");
+        requireNonNull(pulsarBoltConf.getTupleToMessageMapper(), "tuple mapper can't be null");
         this.pulsarBoltConf = pulsarBoltConf;
         this.clientConf = clientConf;
         this.producerConf = producerConf;
@@ -93,10 +97,9 @@ public class PulsarBolt extends BaseRichBolt implements IMetric<Map<String, Obje
         this.producerConf.setTopicName(pulsarBoltConf.getTopic());
         this.producerConf.setBatcherBuilder(null);
     }
-    
-    @SuppressWarnings({ "rawtypes" })
+
     @Override
-    public void prepare(Map conf, TopologyContext context, OutputCollector collector) {
+    public void prepare(Map<String, Object> conf, TopologyContext context, OutputCollector collector) {
         this.componentId = context.getThisComponentId();
         this.boltId = String.format("%s-%s", componentId, context.getThisTaskId());
         this.collector = collector;
@@ -116,53 +119,79 @@ public class PulsarBolt extends BaseRichBolt implements IMetric<Map<String, Obje
     @Override
     public void execute(Tuple input) {
         if (TupleUtils.isTick(input)) {
-            collector.ack(input);
+            synchronized (collector) {
+                collector.ack(input);
+            }
+            return;
+        }
+        if (producer == null) {
+            IllegalStateException ex = new IllegalStateException("Pulsar producer is not initialized");
+            LOG.error("[{}] Producer is null, failing tuple", boltId, ex);
+            synchronized (collector) {
+                collector.reportError(ex);
+                collector.fail(input);
+            }
+            messagesFailed.incrementAndGet();
             return;
         }
         try {
-            if (producer != null) {
-                // a message key can be provided in the mapper
-                TypedMessageBuilder<byte[]> msgBuilder = pulsarBoltConf.getTupleToMessageMapper()
-                        .toMessage(producer.newMessage(), input);
-                if (msgBuilder == null) {
-                    if (LOG.isDebugEnabled()) {
-                        LOG.debug("[{}] Cannot send null message, acking the collector", boltId);
-                    }
+            TypedMessageBuilder<byte[]> msgBuilder = pulsarBoltConf.getTupleToMessageMapper()
+                    .toMessage(producer.newMessage(), input);
+            if (msgBuilder == null) {
+                if (LOG.isDebugEnabled()) {
+                    LOG.debug("[{}] Cannot send null message, acking the collector", boltId);
+                }
+                synchronized (collector) {
                     collector.ack(input);
-                } else {
-                    final long messageSizeToBeSent = ((TypedMessageBuilderImpl<byte[]>) msgBuilder).getContent()
-                            .remaining();
-                    msgBuilder.sendAsync().handle((msgId, ex) -> {
-                        synchronized (collector) {
-                            if (ex != null) {
-                                collector.reportError(ex);
-                                collector.fail(input);
-                                LOG.error("[{}] Message send failed", boltId, ex);
-
-                            } else {
-                                collector.ack(input);
-                                ++messagesSent;
-                                messageSizeSent += messageSizeToBeSent;
-                                if (LOG.isDebugEnabled()) {
-                                    LOG.debug("[{}] Message sent with id {}", boltId, msgId);
-                                }
+                }
+            } else {
+                long size = 0;
+                if (msgBuilder instanceof TypedMessageBuilderImpl) {
+                    ByteBuffer content = ((TypedMessageBuilderImpl<byte[]>) msgBuilder).getContent();
+                    if (content != null) {
+                        size = content.remaining();
+                    }
+                }
+                final long messageSizeToBeSent = size;
+                msgBuilder.sendAsync().handle((msgId, ex) -> {
+                    synchronized (collector) {
+                        if (ex != null) {
+                            collector.reportError(ex);
+                            collector.fail(input);
+                            messagesFailed.incrementAndGet();
+                            LOG.error("[{}] Message send failed", boltId, ex);
+                        } else {
+                            collector.ack(input);
+                            messagesSent.incrementAndGet();
+                            messageSizeSent.addAndGet(messageSizeToBeSent);
+                            if (LOG.isDebugEnabled()) {
+                                LOG.debug("[{}] Message sent with id {}", boltId, msgId);
                             }
                         }
-
-                        return null;
-                    });
-                }
+                    }
+                    return null;
+                });
             }
         } catch (Exception e) {
             LOG.error("[{}] Message processing failed", boltId, e);
-            collector.reportError(e);
-            collector.fail(input);
+            synchronized (collector) {
+                collector.reportError(e);
+                collector.fail(input);
+            }
+            messagesFailed.incrementAndGet();
         }
     }
 
     public void close() {
         try {
             LOG.info("[{}] Closing Pulsar producer on topic {}", boltId, pulsarBoltConf.getTopic());
+            if (producer != null) {
+                try {
+                    producer.flush();
+                } catch (PulsarClientException e) {
+                    LOG.warn("[{}] Error flushing Pulsar producer on topic {}", boltId, pulsarBoltConf.getTopic(), e);
+                }
+            }
             if (sharedPulsarClient != null) {
                 sharedPulsarClient.close();
             }
@@ -186,22 +215,34 @@ public class PulsarBolt extends BaseRichBolt implements IMetric<Map<String, Obje
      */
 
     Map<String, Object> getMetrics() {
-        metricsMap.put(NO_OF_MESSAGES_SENT, messagesSent);
-        metricsMap.put(PRODUCER_RATE, ((double) messagesSent) / pulsarBoltConf.getMetricsTimeIntervalInSecs());
+        long sent = messagesSent.get();
+        long failed = messagesFailed.get();
+        long bytesSent = messageSizeSent.get();
+        metricsMap.put(NO_OF_MESSAGES_SENT, sent);
+        metricsMap.put(NO_OF_MESSAGES_FAILED, failed);
+        metricsMap.put(PRODUCER_RATE, ((double) sent) / pulsarBoltConf.getMetricsTimeIntervalInSecs());
         metricsMap.put(PRODUCER_THROUGHPUT_BYTES,
-                ((double) messageSizeSent) / pulsarBoltConf.getMetricsTimeIntervalInSecs());
+                ((double) bytesSent) / pulsarBoltConf.getMetricsTimeIntervalInSecs());
         return metricsMap;
     }
 
     void resetMetrics() {
-        messagesSent = 0;
-        messageSizeSent = 0;
+        messagesSent.set(0);
+        messagesFailed.set(0);
+        messageSizeSent.set(0);
     }
 
     @Override
     public Map<String, Object> getValueAndReset() {
-        Map<String, Object> metrics = getMetrics();
-        resetMetrics();
+        Map<String, Object> metrics = new HashMap<>();
+        long sent = messagesSent.getAndSet(0);
+        long failed = messagesFailed.getAndSet(0);
+        long bytesSent = messageSizeSent.getAndSet(0);
+        metrics.put(NO_OF_MESSAGES_SENT, sent);
+        metrics.put(NO_OF_MESSAGES_FAILED, failed);
+        metrics.put(PRODUCER_RATE, ((double) sent) / pulsarBoltConf.getMetricsTimeIntervalInSecs());
+        metrics.put(PRODUCER_THROUGHPUT_BYTES,
+                ((double) bytesSent) / pulsarBoltConf.getMetricsTimeIntervalInSecs());
         return metrics;
     }
 }

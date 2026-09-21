@@ -18,29 +18,28 @@
  */
 package org.apache.heron.pulsar;
 
-import org.apache.heron.api.tuple.Values;
+import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertNotNull;
 
-/**
- * Returned by MessageToValuesMapper, this specifies the Values
- * for an output tuple and the stream it should be sent to.
- */
-public class PulsarTuple extends Values {
+import org.testng.annotations.Test;
 
-    private static final long serialVersionUID = 1L;
+public class PulsarTupleTest {
 
-    protected final String outputStream;
+    @Test
+    public void testPulsarTupleCreationAndAccessors() {
+        PulsarTuple tuple = new PulsarTuple("alerts-stream", "field1", 123L, true);
 
-    public PulsarTuple(String outStream, Object... values) {
-        super(values);
-        this.outputStream = outStream;
+        assertEquals(tuple.getOutputStream(), "alerts-stream");
+        assertEquals(tuple.size(), 3);
+        assertEquals(tuple.get(0), "field1");
+        assertEquals(tuple.get(1), 123L);
+        assertEquals(tuple.get(2), Boolean.TRUE);
     }
 
-    /**
-     * Return stream the tuple should be emitted on.
-     *
-     * @return String
-     */
-    public String getOutputStream() {
-        return outputStream;
+    @Test
+    public void testPulsarTupleEmptyValues() {
+        PulsarTuple tuple = new PulsarTuple("empty-stream");
+        assertEquals(tuple.getOutputStream(), "empty-stream");
+        assertEquals(tuple.size(), 0);
     }
 }

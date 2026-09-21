@@ -25,15 +25,10 @@ import org.apache.pulsar.client.api.MessageId;
 import org.apache.pulsar.client.api.SubscriptionType;
 
 /**
- * Class used to specify pulsar spout configuration
- *
- *
+ * Class used to specify Pulsar spout configuration.
  */
 public class PulsarSpoutConfiguration extends PulsarHeronConfiguration {
 
-    /**
-     *
-     */
     private static final long serialVersionUID = 1L;
 
     public static final long DEFAULT_FAILED_RETRIES_TIMEOUT_NANO = TimeUnit.SECONDS.toNanos(60);
@@ -49,9 +44,8 @@ public class PulsarSpoutConfiguration extends PulsarHeronConfiguration {
     private boolean autoUnsubscribe = false;
     private boolean durableSubscription = true;
     // read position if non-durable subscription is enabled : default oldest message available in topic
-    private MessageId nonDurableSubscriptionReadPosition = MessageId.earliest; 
+    private MessageId nonDurableSubscriptionReadPosition = MessageId.earliest;
 
-    
     /**
      * @return the subscription name for the consumer in the spout
      */
@@ -60,7 +54,7 @@ public class PulsarSpoutConfiguration extends PulsarHeronConfiguration {
     }
 
     /**
-     * Sets the subscription name for the consumer in the spout
+     * Sets the subscription name for the consumer in the spout.
      *
      * @param subscriptionName
      */
@@ -77,16 +71,16 @@ public class PulsarSpoutConfiguration extends PulsarHeronConfiguration {
     }
 
     /**
-     * @return the mapper to convert pulsar message to a storm tuple
+     * @return the mapper to convert Pulsar message to a Heron tuple
      */
     public MessageToValuesMapper getMessageToValuesMapper() {
         return messageToValuesMapper;
     }
 
     /**
-     * Sets the mapper to convert pulsar message to a storm tuple.
+     * Sets the mapper to convert Pulsar message to a Heron tuple.
      * <p>
-     * Note: If the mapper returns null, the message is not emitted to the collector and is acked immediately
+     * Note: If the mapper returns null, the message is not emitted to the collector and is acked immediately.
      * </p>
      *
      * @param mapper
@@ -96,7 +90,6 @@ public class PulsarSpoutConfiguration extends PulsarHeronConfiguration {
     }
 
     /**
-     *
      * @param unit
      * @return the timeout for retrying failed messages
      */
@@ -106,7 +99,7 @@ public class PulsarSpoutConfiguration extends PulsarHeronConfiguration {
 
     /**
      * Sets the timeout within which the spout will re-inject failed messages with an exponential backoff <i>(default:
-     * 60 seconds)</i> Note: If set to 0, the message will not be retried when failed. If set to < 0, the message will
+     * 60 seconds)</i> Note: If set to 0, the message will not be retried when failed. If set to &lt; 0, the message will
      * be retried forever till it is successfully processed or max message retry count is reached, whichever comes
      * first.
      *
@@ -118,7 +111,6 @@ public class PulsarSpoutConfiguration extends PulsarHeronConfiguration {
     }
 
     /**
-     *
      * @return the maximum number of times a failed message will be retried
      */
     public int getMaxFailedRetries() {
@@ -127,7 +119,7 @@ public class PulsarSpoutConfiguration extends PulsarHeronConfiguration {
 
     /**
      * Sets the maximum number of times the spout will re-inject failed messages with an exponential backoff
-     * <i>(default: -1)</i> Note: If set to 0, the message will not be retried when failed. If set to < 0, the message
+     * <i>(default: -1)</i> Note: If set to 0, the message will not be retried when failed. If set to &lt; 0, the message
      * will be retried forever till it is successfully processed or configured timeout expires, whichever comes first.
      *
      * @param maxFailedRetries
@@ -137,7 +129,6 @@ public class PulsarSpoutConfiguration extends PulsarHeronConfiguration {
     }
 
     /**
-     *
      * @return if the consumer is shared across different executors of a spout
      */
     public boolean isSharedConsumerEnabled() {
@@ -152,28 +143,28 @@ public class PulsarSpoutConfiguration extends PulsarHeronConfiguration {
     public void setSharedConsumerEnabled(boolean sharedConsumerEnabled) {
         this.sharedConsumerEnabled = sharedConsumerEnabled;
     }
-    
+
     public boolean isAutoUnsubscribe() {
         return autoUnsubscribe;
     }
 
     /**
      * It unsubscribes the subscription when spout gets closed in the topology.
-     * 
+     *
      * @param autoUnsubscribe
      */
     public void setAutoUnsubscribe(boolean autoUnsubscribe) {
         this.autoUnsubscribe = autoUnsubscribe;
     }
-    
+
     public boolean isDurableSubscription() {
         return durableSubscription;
     }
 
     /**
-     * if subscription is not durable then it creates non-durable reader to start reading from the
+     * If subscription is not durable then it creates non-durable reader to start reading from the
      * {@link #setNonDurableSubscriptionReadPosition(MessageId)} in topic.
-     * 
+     *
      * @param durableSubscription
      */
     public void setDurableSubscription(boolean durableSubscription) {
@@ -186,7 +177,7 @@ public class PulsarSpoutConfiguration extends PulsarHeronConfiguration {
 
     /**
      * Non-durable-subscription/Reader can be set to start reading from a specific position earliest/latest.
-     * 
+     *
      * @param nonDurableSubscriptionReadPosition
      */
     public void setNonDurableSubscriptionReadPosition(MessageId nonDurableSubscriptionReadPosition) {

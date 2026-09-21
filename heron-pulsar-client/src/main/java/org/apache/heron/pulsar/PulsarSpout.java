@@ -23,9 +23,11 @@ import static java.util.Objects.requireNonNull;
 
 import java.io.IOException;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Queue;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -66,6 +68,7 @@ public class PulsarSpout extends BaseRichSpout implements IMetric<Map<String, Ob
     public static final String NO_OF_MESSAGES_FAILED = "numberOfMessagesFailed";
     public static final String MESSAGE_NOT_AVAILABLE_COUNT = "messageNotAvailableCount";
     public static final String NO_OF_PENDING_ACKS = "numberOfPendingAcks";
+    public static final String NO_OF_FAILED_ACKS = "numberOfFailedAcks";
     public static final String CONSUMER_RATE = "consumerRate";
     public static final String CONSUMER_THROUGHPUT_BYTES = "consumerThroughput";
 
@@ -88,6 +91,7 @@ public class PulsarSpout extends BaseRichSpout implements IMetric<Map<String, Ob
     private final AtomicLong messagesFailed = new AtomicLong();
     private final AtomicLong messageNotAvailableCount = new AtomicLong();
     private final AtomicLong pendingAcks = new AtomicLong();
+    private final AtomicLong failedAcks = new AtomicLong();
     private final AtomicLong messageSizeReceived = new AtomicLong();
 
     public PulsarSpout(PulsarSpoutConfiguration pulsarSpoutConf) {
@@ -95,22 +99,24 @@ public class PulsarSpout extends BaseRichSpout implements IMetric<Map<String, Ob
     }
 
     public PulsarSpout(PulsarSpoutConfiguration pulsarSpoutConf, ClientBuilder clientBuilder) {
-        this(pulsarSpoutConf, ((ClientBuilderImpl) clientBuilder).getClientConfigurationData().clone(),
+        this(pulsarSpoutConf,
+                ((ClientBuilderImpl) requireNonNull(clientBuilder, "clientBuilder cannot be null"))
+                        .getClientConfigurationData().clone(),
                 new ConsumerConfigurationData<byte[]>());
     }
 
     public PulsarSpout(PulsarSpoutConfiguration pulsarSpoutConf, ClientConfigurationData clientConfig,
                        ConsumerConfigurationData<byte[]> consumerConfig) {
-        requireNonNull(pulsarSpoutConf.getServiceUrl());
-        requireNonNull(pulsarSpoutConf.getSubscriptionName());
-        requireNonNull(pulsarSpoutConf.getMessageToValuesMapper());
+        requireNonNull(pulsarSpoutConf, "spout configuration can't be null");
+        requireNonNull(pulsarSpoutConf.getServiceUrl(), "serviceUrl can't be null");
+        requireNonNull(pulsarSpoutConf.getSubscriptionName(), "subscriptionName can't be null");
+        requireNonNull(pulsarSpoutConf.getMessageToValuesMapper(), "messageToValuesMapper can't be null");
         if (Objects.isNull(pulsarSpoutConf.getTopicNames())
             && Objects.isNull(pulsarSpoutConf.getTopic())
             && Objects.isNull((pulsarSpoutConf.getTopicPattern()))) {
             throw new IllegalArgumentException("names or pattern of Topic");
         }
 
-        requireNonNull(pulsarSpoutConf, "spout configuration can't be null");
         requireNonNull(clientConfig, "client configuration can't be null");
         requireNonNull(consumerConfig, "consumer configuration can't be null");
         this.clientConf = clientConfig;
@@ -127,10 +133,10 @@ public class PulsarSpout extends BaseRichSpout implements IMetric<Map<String, Ob
             LOG.info("[{}] Closing Pulsar consumer for topic {}", spoutId,
                      pulsarSpoutConf.getTopicNameOrPattern());
 
-            if (pulsarSpoutConf.isAutoUnsubscribe()) {
+            if (pulsarSpoutConf.isAutoUnsubscribe() && !pulsarSpoutConf.isSharedConsumerEnabled() && consumer != null) {
                 try {
                     consumer.unsubscribe();
-                }catch(PulsarClientException e) {
+                } catch (PulsarClientException e) {
                     LOG.error("[{}] Failed to unsubscribe {} on topic {}", spoutId,
                               pulsarSpoutConf.getSubscriptionName(),
                               pulsarSpoutConf.getTopicNameOrPattern(), e);
@@ -157,10 +163,18 @@ public class PulsarSpout extends BaseRichSpout implements IMetric<Map<String, Ob
             if (LOG.isDebugEnabled()) {
                 LOG.debug("[{}] Received ack for message {}", spoutId, msg.getMessageId());
             }
-            consumer.acknowledgeAsync(msg);
+            if (consumer != null) {
+                CompletableFuture<Void> future = consumer.acknowledgeAsync(msg);
+                if (future != null) {
+                    future.whenComplete((result, throwable) -> {
+                        if (throwable != null) {
+                            failedAcks.incrementAndGet();
+                            LOG.warn("[{}] Failed to acknowledge message {}", spoutId, msg.getMessageId(), throwable);
+                        }
+                    });
+                }
+            }
             pendingMessageRetries.remove(msg.getMessageId());
-            // we should also remove message from failedMessages but it will be eventually removed while emitting next
-            // tuple
             pendingAcks.decrementAndGet();
         }
     }
@@ -178,11 +192,10 @@ public class PulsarSpout extends BaseRichSpout implements IMetric<Map<String, Ob
             MessageRetries messageRetries = pendingMessageRetries.computeIfAbsent(id, (k) -> new MessageRetries());
             if ((failedRetriesTimeoutNano < 0
                     || (messageRetries.getTimeStamp() + failedRetriesTimeoutNano) > System.nanoTime())
-                    && (maxFailedRetries < 0 || messageRetries.numRetries < maxFailedRetries)) {
-                // since we can retry again, we increment retry count and put it in the queue
+                    && (maxFailedRetries < 0 || messageRetries.getNumRetries() < maxFailedRetries)) {
+                // record latest failure timestamp and increment retry count
                 LOG.info("[{}] Putting message {} in the retry queue", spoutId, id);
-                messageRetries.incrementAndGet();
-                pendingMessageRetries.putIfAbsent(id, messageRetries);
+                messageRetries.recordFailure();
                 failedMessages.add(msg);
                 pendingAcks.decrementAndGet();
                 messagesFailed.incrementAndGet();
@@ -191,7 +204,6 @@ public class PulsarSpout extends BaseRichSpout implements IMetric<Map<String, Ob
                 ack(msg);
             }
         }
-
     }
 
     /**
@@ -226,7 +238,7 @@ public class PulsarSpout extends BaseRichSpout implements IMetric<Map<String, Ob
                     msg = consumer.receive(100, TimeUnit.MILLISECONDS);
                     if (msg != null) {
                         messagesReceived.incrementAndGet();
-                        messageSizeReceived.getAndAdd(msg.getData().length);
+                        messageSizeReceived.getAndAdd(msg.getData() != null ? msg.getData().length : 0);
                         done = mapToValueAndEmit(msg);
                     } else {
                         // queue is empty and nothing to emit
@@ -236,6 +248,7 @@ public class PulsarSpout extends BaseRichSpout implements IMetric<Map<String, Ob
                 }
             } catch (PulsarClientException e) {
                 LOG.error("[{}] Error receiving message from pulsar consumer", spoutId, e);
+                Utils.sleep(100);
             }
         }
     }
@@ -246,19 +259,19 @@ public class PulsarSpout extends BaseRichSpout implements IMetric<Map<String, Ob
         while ((msg = failedMessages.peek()) != null) {
             MessageRetries messageRetries = pendingMessageRetries.get(msg.getMessageId());
             if (messageRetries != null) {
-                // emit the tuple if retry doesn't need backoff else sleep with backoff time and return without doing
-                // anything
+                // check if retry needs backoff
                 if (Backoff.shouldBackoff(messageRetries.getTimeStamp(), TimeUnit.NANOSECONDS,
                         messageRetries.getNumRetries(), clientConf.getInitialBackoffIntervalNanos(),
                         clientConf.getMaxBackoffIntervalNanos())) {
-                    Utils.sleep(TimeUnit.NANOSECONDS.toMillis(clientConf.getInitialBackoffIntervalNanos()));
+                    // Non-blocking: Do not sleep main thread; return false to allow processing live incoming messages
+                    return false;
                 } else {
-                    // remove the message from the queue and emit to the topology, only if it should not be backedoff
+                    // remove the message from the queue and emit to the topology
                     LOG.info("[{}] Retrying failed message {}", spoutId, msg.getMessageId());
                     failedMessages.remove();
                     mapToValueAndEmit(msg);
+                    return true;
                 }
-                return true;
             }
 
             // messageRetries is null because messageRetries is already acked and removed from pendingMessageRetries
@@ -268,8 +281,6 @@ public class PulsarSpout extends BaseRichSpout implements IMetric<Map<String, Ob
                           pulsarSpoutConf.getTopicNameOrPattern(), spoutId, msg.getMessageId());
             }
             failedMessages.remove();
-            // try to find out next failed message
-            continue;
         }
         return false;
     }
@@ -315,7 +326,11 @@ public class PulsarSpout extends BaseRichSpout implements IMetric<Map<String, Ob
                                                                .createReaderAsync(newReaderConfiguration())
                                                                .join());
             } catch (CompletionException e) {
-                throw (PulsarClientException) e.getCause();
+                Throwable cause = e.getCause();
+                if (cause instanceof PulsarClientException) {
+                    throw (PulsarClientException) cause;
+                }
+                throw new PulsarClientException(cause != null ? cause : e);
             }
         }
         return consumer;
@@ -352,8 +367,8 @@ public class PulsarSpout extends BaseRichSpout implements IMetric<Map<String, Ob
         return false;
     }
 
-    public class MessageRetries {
-        private final long timestampInNano;
+    public static class MessageRetries {
+        private long timestampInNano;
         private int numRetries;
 
         public MessageRetries() {
@@ -365,8 +380,9 @@ public class PulsarSpout extends BaseRichSpout implements IMetric<Map<String, Ob
             return timestampInNano;
         }
 
-        public int incrementAndGet() {
-            return ++numRetries;
+        public void recordFailure() {
+            this.timestampInNano = System.nanoTime();
+            ++this.numRetries;
         }
 
         public int getNumRetries() {
@@ -385,6 +401,7 @@ public class PulsarSpout extends BaseRichSpout implements IMetric<Map<String, Ob
         metricsMap.put(NO_OF_MESSAGES_FAILED, messagesFailed.get());
         metricsMap.put(MESSAGE_NOT_AVAILABLE_COUNT, messageNotAvailableCount.get());
         metricsMap.put(NO_OF_PENDING_ACKS, pendingAcks.get());
+        metricsMap.put(NO_OF_FAILED_ACKS, failedAcks.get());
         metricsMap.put(CONSUMER_RATE, ((double) messagesReceived.get()) / pulsarSpoutConf.getMetricsTimeIntervalInSecs());
         metricsMap.put(CONSUMER_THROUGHPUT_BYTES,
                 ((double) messageSizeReceived.get()) / pulsarSpoutConf.getMetricsTimeIntervalInSecs());
@@ -397,12 +414,30 @@ public class PulsarSpout extends BaseRichSpout implements IMetric<Map<String, Ob
         messageSizeReceived.set(0);
         messagesFailed.set(0);
         messageNotAvailableCount.set(0);
+        failedAcks.set(0);
     }
 
     @Override
     public Map<String, Object> getValueAndReset() {
-        Map<String, Object> metrics = getMetrics();
-        resetMetrics();
+        Map<String, Object> metrics = new HashMap<>();
+        metrics.put(NO_OF_PENDING_FAILED_MESSAGES, (long) pendingMessageRetries.size());
+        metrics.put(NO_OF_PENDING_ACKS, pendingAcks.get());
+
+        long received = messagesReceived.getAndSet(0);
+        long emitted = messagesEmitted.getAndSet(0);
+        long failed = messagesFailed.getAndSet(0);
+        long notAvail = messageNotAvailableCount.getAndSet(0);
+        long failedAckCount = failedAcks.getAndSet(0);
+        long bytesReceived = messageSizeReceived.getAndSet(0);
+
+        metrics.put(NO_OF_MESSAGES_RECEIVED, received);
+        metrics.put(NO_OF_MESSAGES_EMITTED, emitted);
+        metrics.put(NO_OF_MESSAGES_FAILED, failed);
+        metrics.put(MESSAGE_NOT_AVAILABLE_COUNT, notAvail);
+        metrics.put(NO_OF_FAILED_ACKS, failedAckCount);
+        metrics.put(CONSUMER_RATE, ((double) received) / pulsarSpoutConf.getMetricsTimeIntervalInSecs());
+        metrics.put(CONSUMER_THROUGHPUT_BYTES,
+                ((double) bytesReceived) / pulsarSpoutConf.getMetricsTimeIntervalInSecs());
         return metrics;
     }
 
@@ -431,7 +466,7 @@ public class PulsarSpout extends BaseRichSpout implements IMetric<Map<String, Ob
     protected ConsumerConfigurationData<byte[]> newConsumerConfiguration() {
         ConsumerConfigurationData<byte[]> consumerConf = this.consumerConf != null ? this.consumerConf
                                                                                    :
-                                                         new ConsumerConfigurationData<>();
+                                                          new ConsumerConfigurationData<>();
         if (Objects.nonNull(pulsarSpoutConf.getTopicNames())) {
             consumerConf.setTopicNames(pulsarSpoutConf.getTopicNames());
             consumerConf.setAutoUpdatePartitions(true);
@@ -457,7 +492,6 @@ public class PulsarSpout extends BaseRichSpout implements IMetric<Map<String, Ob
         private final Consumer<byte[]> consumer;
 
         public SpoutConsumer(Consumer<byte[]> consumer) {
-            super();
             this.consumer = consumer;
         }
 
@@ -467,8 +501,8 @@ public class PulsarSpout extends BaseRichSpout implements IMetric<Map<String, Ob
         }
 
         @Override
-        public void acknowledgeAsync(Message<?> msg) {
-            consumer.acknowledgeAsync(msg);
+        public CompletableFuture<Void> acknowledgeAsync(Message<?> msg) {
+            return consumer.acknowledgeAsync(msg);
         }
 
         @Override
@@ -480,14 +514,12 @@ public class PulsarSpout extends BaseRichSpout implements IMetric<Map<String, Ob
         public void unsubscribe() throws PulsarClientException {
             consumer.unsubscribe();
         }
-
     }
 
     static class SpoutReader implements PulsarSpoutConsumer {
         private final Reader<byte[]> reader;
 
         public SpoutReader(Reader<byte[]> reader) {
-            super();
             this.reader = reader;
         }
 
@@ -497,8 +529,8 @@ public class PulsarSpout extends BaseRichSpout implements IMetric<Map<String, Ob
         }
 
         @Override
-        public void acknowledgeAsync(Message<?> msg) {
-            // No-op
+        public CompletableFuture<Void> acknowledgeAsync(Message<?> msg) {
+            return CompletableFuture.completedFuture(null);
         }
 
         @Override
