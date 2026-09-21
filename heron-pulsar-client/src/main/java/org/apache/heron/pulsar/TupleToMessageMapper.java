@@ -42,12 +42,16 @@ public interface TupleToMessageMapper extends Serializable {
     /**
      * Set the value on a message builder to prepare the message to be published from the Bolt.
      *
+     * @param msgBuilder
      * @param tuple
      * @return
      */
     default TypedMessageBuilder<byte[]> toMessage(TypedMessageBuilder<byte[]> msgBuilder, Tuple tuple) {
         // Default implementation provided for backward compatibility
         Message<byte[]> msg = toMessage(tuple);
+        if (msg == null) {
+            return null;
+        }
         msgBuilder.value(msg.getData())
             .properties(msg.getProperties());
         if (msg.hasKey()) {
@@ -56,11 +60,10 @@ public interface TupleToMessageMapper extends Serializable {
         return msgBuilder;
     }
 
-
     /**
      * Declare the output schema for the bolt.
      *
      * @param declarer
      */
-    public void declareOutputFields(OutputFieldsDeclarer declarer);
+    void declareOutputFields(OutputFieldsDeclarer declarer);
 }

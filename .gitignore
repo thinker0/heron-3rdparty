@@ -3,5 +3,6 @@ pom.xml.releaseBackup
 release.properties
 
 target/
+aidlc-docs/
 .idea/
 *.iml
