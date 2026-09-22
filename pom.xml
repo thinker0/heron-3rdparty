@@ -32,7 +32,7 @@
     <pulsar.version>2.11.4</pulsar.version>
     <netty.version>4.1.136.Final</netty.version>
     <jackson.version>2.18.3</jackson.version>
-    <jackson.version.databind>2.18.3</jackson.version.databind>
+    <jackson.version.databind>2.18.9</jackson.version.databind>
     <jetty.version>9.4.56.v20240826</jetty.version>
     <logback.version>1.5.16</logback.version>
 
