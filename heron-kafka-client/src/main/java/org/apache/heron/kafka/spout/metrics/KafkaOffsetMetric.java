@@ -18,9 +18,11 @@
 
 package org.apache.heron.kafka.spout.metrics;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 import org.apache.heron.api.metric.IMetric;
 import org.apache.heron.kafka.spout.internal.OffsetManager;
@@ -34,28 +36,25 @@ import org.slf4j.LoggerFactory;
  * This class is used compute the partition and topic level offset metrics.
  * <p>
  * Partition level metrics are:
- * topicName/partition_{number}/earliestTimeOffset //gives beginning offset of the partition
  * topicName/partition_{number}/latestTimeOffset //gives end offset of the partition
  * topicName/partition_{number}/latestEmittedOffset //gives latest emitted offset of the partition from the spout
  * topicName/partition_{number}/latestCompletedOffset //gives latest committed offset of the partition from the spout
  * topicName/partition_{number}/spoutLag // the delta between the latest Offset and latestCompletedOffset
- * topicName/partition_{number}/recordsInPartition // total number of records in the partition
  * </p>
  * <p>
  * Topic level metrics are:
- * topicName/totalEarliestTimeOffset //gives the total beginning offset of all the associated partitions of this spout
  * topicName/totalLatestTimeOffset //gives the total end offset of all the associated partitions of this spout
  * topicName/totalLatestEmittedOffset //gives the total latest emitted offset of all the associated partitions of this spout
  * topicName/totalLatestCompletedOffset //gives the total latest committed offset of all the associated partitions of this spout
- * topicName/spoutLag // total spout lag of all the associated partitions of this spout
- * topicName/totalRecordsInPartitions //total number of records in all the associated partitions of this spout
+ * topicName/totalSpoutLag // total spout lag of all the associated partitions of this spout
  * </p>
  */
-public class KafkaOffsetMetric<K, V> implements IMetric {
+public class KafkaOffsetMetric<K, V> implements IMetric<Map<String, Long>> {
 
     private static final Logger LOG = LoggerFactory.getLogger(KafkaOffsetMetric.class);
     private final Supplier<Map<TopicPartition, OffsetManager>> offsetManagerSupplier;
     private final Supplier<Consumer<K, V>> consumerSupplier;
+    private final AtomicReference<Map<String, Long>> latestMetrics = new AtomicReference<>(Collections.emptyMap());
 
     public KafkaOffsetMetric(Supplier<Map<TopicPartition, OffsetManager>> offsetManagerSupplier,
         Supplier<Consumer<K, V>> consumerSupplier) {
@@ -63,89 +62,93 @@ public class KafkaOffsetMetric<K, V> implements IMetric {
         this.consumerSupplier = consumerSupplier;
     }
 
-    @Override
-    public Object getValueAndReset() {
-
-        Map<TopicPartition, OffsetManager> offsetManagers = offsetManagerSupplier.get();
-        Consumer<K, V> consumer = consumerSupplier.get();
+    /**
+     * Refreshes metrics on the Spout main thread where Consumer is safely accessible.
+     */
+    public void refresh() {
+        Map<TopicPartition, OffsetManager> offsetManagers = offsetManagerSupplier != null ? offsetManagerSupplier.get() : null;
+        Consumer<K, V> consumer = consumerSupplier != null ? consumerSupplier.get() : null;
 
         if (offsetManagers == null || offsetManagers.isEmpty() || consumer == null) {
-            LOG.debug("Metrics Tick: offsetManagers or kafkaConsumer is null.");
-            return null;
+            LOG.debug("Metrics refresh skipped: offsetManagers or consumer is null/empty.");
+            return;
+        }
+
+        try {
+            Set<TopicPartition> topicPartitions = offsetManagers.keySet();
+            Map<TopicPartition, Long> endOffsets = consumer.endOffsets(topicPartitions);
+            Map<String, Long> result = computeMetrics(offsetManagers, endOffsets);
+            latestMetrics.set(Collections.unmodifiableMap(result));
+        } catch (RetriableException e) {
+            LOG.warn("Failed to get offsets from Kafka! Will retry on next metrics refresh.", e);
+        } catch (Exception e) {
+            LOG.warn("Unexpected error refreshing Kafka offset metrics.", e);
+        }
+    }
+
+    public static Map<String, Long> computeMetrics(Map<TopicPartition, OffsetManager> offsetManagers,
+                                                   Map<TopicPartition, Long> endOffsets) {
+        if (offsetManagers == null || offsetManagers.isEmpty() || endOffsets == null) {
+            return Collections.emptyMap();
         }
 
         Map<String, TopicMetrics> topicMetricsMap = new HashMap<>();
-        Set<TopicPartition> topicPartitions = offsetManagers.keySet();
-
-        // Map<TopicPartition, Long> beginningOffsets;
-        Map<TopicPartition, Long> endOffsets;
-
-        try {
-            // beginningOffsets = consumer.beginningOffsets(topicPartitions);
-            endOffsets = consumer.endOffsets(topicPartitions);
-        } catch (RetriableException e) {
-            LOG.warn("Failed to get offsets from Kafka! Will retry on next metrics tick.", e);
-            return null;
-        }
-
-        //map to hold partition level and topic level metrics
         Map<String, Long> result = new HashMap<>();
 
         for (Map.Entry<TopicPartition, OffsetManager> entry : offsetManagers.entrySet()) {
             TopicPartition topicPartition = entry.getKey();
             OffsetManager offsetManager = entry.getValue();
 
-            long latestTimeOffset = endOffsets.get(topicPartition);
-            // long earliestTimeOffset = beginningOffsets.get(topicPartition);
+            Long latestTimeOffset = endOffsets.get(topicPartition);
+            if (latestTimeOffset == null || offsetManager == null) {
+                continue;
+            }
 
             long latestEmittedOffset = offsetManager.getLatestEmittedOffset();
             long latestCompletedOffset = offsetManager.getCommittedOffset();
             long spoutLag = latestTimeOffset - latestCompletedOffset;
-            // long recordsInPartition =  latestTimeOffset - earliestTimeOffset;
 
-            String metricPath = topicPartition.topic()  + "/partition_" + topicPartition.partition();
-            result.put(metricPath + "/" + "spoutLag", spoutLag);
-            // result.put(metricPath + "/" + "earliestTimeOffset", earliestTimeOffset);
-            result.put(metricPath + "/" + "latestTimeOffset", latestTimeOffset);
-            result.put(metricPath + "/" + "latestEmittedOffset", latestEmittedOffset);
-            result.put(metricPath + "/" + "latestCompletedOffset", latestCompletedOffset);
-            // result.put(metricPath + "/" + "recordsInPartition", recordsInPartition);
+            String metricPath = topicPartition.topic() + "/partition_" + topicPartition.partition();
+            result.put(metricPath + "/spoutLag", spoutLag);
+            result.put(metricPath + "/latestTimeOffset", latestTimeOffset);
+            result.put(metricPath + "/latestEmittedOffset", latestEmittedOffset);
+            result.put(metricPath + "/latestCompletedOffset", latestCompletedOffset);
 
-            TopicMetrics topicMetrics = topicMetricsMap.get(topicPartition.topic());
-            if (topicMetrics == null) {
-                topicMetrics = new TopicMetrics();
-                topicMetricsMap.put(topicPartition.topic(), topicMetrics);
-            }
-
+            TopicMetrics topicMetrics = topicMetricsMap.computeIfAbsent(topicPartition.topic(), k -> new TopicMetrics());
             topicMetrics.totalSpoutLag += spoutLag;
-            // topicMetrics.totalEarliestTimeOffset += earliestTimeOffset;
             topicMetrics.totalLatestTimeOffset += latestTimeOffset;
             topicMetrics.totalLatestEmittedOffset += latestEmittedOffset;
             topicMetrics.totalLatestCompletedOffset += latestCompletedOffset;
-            // topicMetrics.totalRecordsInPartitions += recordsInPartition;
         }
 
         for (Map.Entry<String, TopicMetrics> e : topicMetricsMap.entrySet()) {
             String topic = e.getKey();
             TopicMetrics topicMetrics = e.getValue();
-            result.put(topic + "/" + "totalSpoutLag", topicMetrics.totalSpoutLag);
-            // result.put(topic + "/" + "totalEarliestTimeOffset", topicMetrics.totalEarliestTimeOffset);
-            result.put(topic + "/" + "totalLatestTimeOffset", topicMetrics.totalLatestTimeOffset);
-            result.put(topic + "/" + "totalLatestEmittedOffset", topicMetrics.totalLatestEmittedOffset);
-            result.put(topic + "/" + "totalLatestCompletedOffset", topicMetrics.totalLatestCompletedOffset);
-            // result.put(topic + "/" + "totalRecordsInPartitions", topicMetrics.totalRecordsInPartitions);
+            result.put(topic + "/totalSpoutLag", topicMetrics.totalSpoutLag);
+            result.put(topic + "/totalLatestTimeOffset", topicMetrics.totalLatestTimeOffset);
+            result.put(topic + "/totalLatestEmittedOffset", topicMetrics.totalLatestEmittedOffset);
+            result.put(topic + "/totalLatestCompletedOffset", topicMetrics.totalLatestCompletedOffset);
         }
 
-        LOG.debug("Metrics Tick: value : {}", result);
         return result;
     }
 
-    private class TopicMetrics {
+    @Override
+    public Map<String, Long> getValueAndReset() {
+        Map<String, Long> metrics = latestMetrics.get();
+        if (metrics == null || metrics.isEmpty()) {
+            LOG.debug("Metrics Tick: no metrics available.");
+            return null;
+        }
+
+        LOG.debug("Metrics Tick: value : {}", metrics);
+        return new HashMap<>(metrics);
+    }
+
+    private static class TopicMetrics {
         long totalSpoutLag = 0;
-        // long totalEarliestTimeOffset = 0;
         long totalLatestTimeOffset = 0;
         long totalLatestEmittedOffset = 0;
         long totalLatestCompletedOffset = 0;
-        // long totalRecordsInPartitions = 0;
     }
 }

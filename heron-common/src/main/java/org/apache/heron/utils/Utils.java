@@ -52,6 +52,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.UUID;
@@ -641,9 +642,13 @@ public class Utils {
      * @return a new map with the value redacted. The original map will not be modified.
      */
     public static Map<String, Object> redactValue(Map<String, Object> m, String key) {
-        if (m.containsKey(key)) {
+        if (m != null && m.containsKey(key)) {
             HashMap<String, Object> newMap = new HashMap<>(m);
             Object value = newMap.get(key);
+            if (value == null) {
+                newMap.put(key, null);
+                return newMap;
+            }
             String v = value.toString();
             String redacted = new String(new char[v.length()]).replace("\0", "#");
             newMap.put(key, redacted);
@@ -681,23 +686,23 @@ public class Utils {
                 }
                 Matcher m = optsPattern.matcher(option);
                 while (m.find()) {
-                    int value = Integer.parseInt(m.group(1));
+                    long value = Long.parseLong(m.group(1));
                     char unitChar = m.group(2).toLowerCase().charAt(0);
-                    int unit;
+                    double unitInMb;
                     switch (unitChar) {
                         case 'k':
-                            unit = 1024;
+                            unitInMb = 1.0 / 1024.0;
                             break;
                         case 'm':
-                            unit = 1024 * 1024;
+                            unitInMb = 1.0;
                             break;
                         case 'g':
-                            unit = 1024 * 1024 * 1024;
+                            unitInMb = 1024.0;
                             break;
                         default:
-                            unit = 1;
+                            unitInMb = 1.0 / (1024.0 * 1024.0);
                     }
-                    Double result = value * unit / 1024.0 / 1024.0;
+                    Double result = value * unitInMb;
                     return (result < 1.0) ? 1.0 : result;
                 }
             }
@@ -801,7 +806,7 @@ public class Utils {
         int base = sum / numPieces;
         int numInc = sum % numPieces;
         int numBases = numPieces - numInc;
-        TreeMap<Integer, Integer> ret = new TreeMap<Integer, Integer>();
+        TreeMap<Integer, Integer> ret = new TreeMap<>();
         ret.put(base, numBases);
         if (numInc != 0) {
             ret.put(base + 1, numInc);
@@ -822,14 +827,14 @@ public class Utils {
     public static <T> List<List<T>> partitionFixed(int maxNumChunks, Collection<T> coll) {
         List<List<T>> ret = new ArrayList<>();
 
-        if (maxNumChunks == 0 || coll == null) {
+        if (maxNumChunks <= 0 || coll == null || coll.isEmpty()) {
             return ret;
         }
 
         Map<Integer, Integer> parts = integerDivided(coll.size(), maxNumChunks);
 
         // Keys sorted in descending order
-        List<Integer> sortedKeys = new ArrayList<Integer>(parts.keySet());
+        List<Integer> sortedKeys = new ArrayList<>(parts.keySet());
         Collections.sort(sortedKeys, Collections.reverseOrder());
 
 
@@ -904,9 +909,19 @@ public class Utils {
     }
 
     public static <V> ArrayList<V> convertToArray(Map<Integer, V> srcMap, int start) {
+        if (srcMap == null || srcMap.isEmpty()) {
+            return new ArrayList<>();
+        }
         Set<Integer> ids = srcMap.keySet();
-        Integer largestId = ids.stream().max(Integer::compareTo).get();
+        Optional<Integer> maxOpt = ids.stream().max(Integer::compareTo);
+        if (!maxOpt.isPresent()) {
+            return new ArrayList<>();
+        }
+        Integer largestId = maxOpt.get();
         int end = largestId - start;
+        if (end < 0) {
+            return new ArrayList<>();
+        }
         ArrayList<V> result = new ArrayList<>(Collections.nCopies(end + 1, null)); // creates array[largestId+1] filled with nulls
         for (Entry<Integer, V> entry : srcMap.entrySet()) {
             int id = entry.getKey();
@@ -985,8 +1000,8 @@ public class Utils {
             conf = new HashMap<>();
         }
         if (tickFreqSecs > 0) {
-            LOG.info("Enabling tick tuple with interval [{}]", tickFreqSecs);
-            conf.put(TOPOLOGY_TICK_TUPLE_FREQ_MS, tickFreqSecs);
+            LOG.info("Enabling tick tuple with interval [{}s]", tickFreqSecs);
+            conf.put(TOPOLOGY_TICK_TUPLE_FREQ_MS, tickFreqSecs * 1000L);
         }
 
         return conf;

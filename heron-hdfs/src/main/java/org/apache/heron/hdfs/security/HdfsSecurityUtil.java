@@ -59,16 +59,21 @@ public final class HdfsSecurityUtil {
             if (UserGroupInformation.isSecurityEnabled()) {
                 // compareAndSet added because of https://issues.apache.org/jira/browse/STORM-1535
                 if (isLoggedIn.compareAndSet(false, true)) {
-                    LOG.info("Logging in using keytab as AutoHDFS is not specified for " + TOPOLOGY_AUTO_CREDENTIALS);
-                    String keytab = (String) conf.get(HERON_KEYTAB_FILE_KEY);
-                    if (keytab != null) {
-                        hdfsConfig.set(HERON_KEYTAB_FILE_KEY, keytab);
+                    try {
+                        LOG.info("Logging in using keytab as AutoHDFS is not specified for {}", TOPOLOGY_AUTO_CREDENTIALS);
+                        String keytab = (String) conf.get(HERON_KEYTAB_FILE_KEY);
+                        if (keytab != null) {
+                            hdfsConfig.set(HERON_KEYTAB_FILE_KEY, keytab);
+                        }
+                        String userName = (String) conf.get(HERON_USER_NAME_KEY);
+                        if (userName != null) {
+                            hdfsConfig.set(HERON_USER_NAME_KEY, userName);
+                        }
+                        SecurityUtil.login(hdfsConfig, HERON_KEYTAB_FILE_KEY, HERON_USER_NAME_KEY);
+                    } catch (IOException | RuntimeException e) {
+                        isLoggedIn.set(false);
+                        throw e;
                     }
-                    String userName = (String) conf.get(HERON_USER_NAME_KEY);
-                    if (userName != null) {
-                        hdfsConfig.set(HERON_USER_NAME_KEY, userName);
-                    }
-                    SecurityUtil.login(hdfsConfig, HERON_KEYTAB_FILE_KEY, HERON_USER_NAME_KEY);
                 }
             }
         }

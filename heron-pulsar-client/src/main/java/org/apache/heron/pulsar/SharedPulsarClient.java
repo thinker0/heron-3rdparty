@@ -43,6 +43,7 @@ public class SharedPulsarClient {
     private static final ConcurrentMap<String, SharedPulsarClient> instances = new ConcurrentHashMap<>();
 
     private final String componentId;
+    private final String instanceKey;
     private final PulsarClientImpl client;
     private final AtomicInteger counter = new AtomicInteger();
 
@@ -50,18 +51,30 @@ public class SharedPulsarClient {
     private final ConcurrentMap<String, Reader<byte[]>> readers = new ConcurrentHashMap<>();
     private final ConcurrentMap<String, Producer<byte[]>> producers = new ConcurrentHashMap<>();
 
-    private SharedPulsarClient(String componentId, ClientConfigurationData clientConf)
+    private SharedPulsarClient(String componentId, String instanceKey, ClientConfigurationData clientConf)
             throws PulsarClientException {
         this.client = new PulsarClientImpl(clientConf);
         this.componentId = componentId;
+        this.instanceKey = instanceKey;
     }
 
     /**
      * Package-private constructor for dependency injection during testing without spawning Netty thread pools.
      */
     SharedPulsarClient(String componentId, PulsarClientImpl client) {
+        this(componentId, componentId, client);
+    }
+
+    SharedPulsarClient(String componentId, String instanceKey, PulsarClientImpl client) {
         this.client = client;
         this.componentId = componentId;
+        this.instanceKey = instanceKey != null ? instanceKey : componentId;
+    }
+
+    static String getClientKey(String componentId, ClientConfigurationData clientConf) {
+        String serviceUrl = clientConf != null && clientConf.getServiceUrl() != null ? clientConf.getServiceUrl() : "";
+        String authPlugin = clientConf != null && clientConf.getAuthPluginClassName() != null ? clientConf.getAuthPluginClassName() : "";
+        return componentId + ":" + serviceUrl + ":" + authPlugin;
     }
 
     /**
@@ -79,11 +92,19 @@ public class SharedPulsarClient {
             throws PulsarClientException {
         Objects.requireNonNull(componentId, "componentId cannot be null");
         Objects.requireNonNull(clientConf, "clientConf cannot be null");
+        String instanceKey = getClientKey(componentId, clientConf);
         AtomicReference<PulsarClientException> exception = new AtomicReference<>();
-        SharedPulsarClient client = instances.compute(componentId, (k, existing) -> {
+        SharedPulsarClient client = instances.compute(instanceKey, (k, existing) -> {
             if (existing == null) {
+                SharedPulsarClient fallback = instances.get(componentId);
+                if (fallback != null) {
+                    if (fallback.counter != null) {
+                        fallback.counter.incrementAndGet();
+                    }
+                    return fallback;
+                }
                 try {
-                    SharedPulsarClient newClient = new SharedPulsarClient(componentId, clientConf);
+                    SharedPulsarClient newClient = new SharedPulsarClient(componentId, instanceKey, clientConf);
                     newClient.counter.incrementAndGet();
                     LOG.info("[{}] Created a new Pulsar Client.", componentId);
                     return newClient;
@@ -172,7 +193,7 @@ public class SharedPulsarClient {
 
     public void close() throws PulsarClientException {
         AtomicReference<PulsarClientException> exceptionRef = new AtomicReference<>();
-        instances.compute(componentId, (k, existing) -> {
+        instances.compute(instanceKey, (k, existing) -> {
             if (existing == this) {
                 if (counter == null || counter.decrementAndGet() <= 0) {
                     try {
@@ -185,6 +206,14 @@ public class SharedPulsarClient {
             }
             return existing;
         });
+        if (componentId != null && !componentId.equals(instanceKey)) {
+            instances.computeIfPresent(componentId, (k, existing) -> {
+                if (existing == this && (counter == null || counter.get() <= 0)) {
+                    return null;
+                }
+                return existing;
+            });
+        }
         if (exceptionRef.get() != null) {
             throw exceptionRef.get();
         }

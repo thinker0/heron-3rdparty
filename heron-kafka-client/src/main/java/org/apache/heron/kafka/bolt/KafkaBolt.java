@@ -197,7 +197,7 @@ public class KafkaBolt<K, V> extends BaseTickTupleAwareRichBolt {
                     collector.ack(input);
                 }
             } else {
-                LOG.warn("skipping key = " + key + ", topic selector returned null.");
+                LOG.warn("skipping key = {}, topic selector returned null.", key);
                 collector.ack(input);
             }
         } catch (Exception ex) {

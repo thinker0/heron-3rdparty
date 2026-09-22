@@ -12,6 +12,7 @@
 
 package org.apache.heron.hdfs.bolt.format;
 
+import java.nio.charset.StandardCharsets;
 import org.apache.heron.api.tuple.Fields;
 import org.apache.heron.api.tuple.Tuple;
 
@@ -69,6 +70,6 @@ public class DelimitedRecordFormat implements RecordFormat {
             }
         }
         sb.append(this.recordDelimiter);
-        return sb.toString().getBytes();
+        return sb.toString().getBytes(StandardCharsets.UTF_8);
     }
 }

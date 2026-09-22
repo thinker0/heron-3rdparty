@@ -201,9 +201,24 @@ public class PulsarSpout extends BaseRichSpout implements IMetric<Map<String, Ob
                 messagesFailed.incrementAndGet();
             } else {
                 LOG.warn("[{}] Number of retries limit reached, dropping the message {}", spoutId, id);
+                messagesFailed.incrementAndGet();
                 ack(msg);
             }
         }
+    }
+
+    private volatile boolean active = true;
+
+    @Override
+    public void activate() {
+        this.active = true;
+        LOG.info("[{}] Activated PulsarSpout", spoutId);
+    }
+
+    @Override
+    public void deactivate() {
+        this.active = false;
+        LOG.info("[{}] Deactivated PulsarSpout", spoutId);
     }
 
     /**
@@ -221,6 +236,11 @@ public class PulsarSpout extends BaseRichSpout implements IMetric<Map<String, Ob
      * emit.
      */
     public void emitNextAvailableTuple() {
+        if (!active) {
+            Utils.sleep(100);
+            return;
+        }
+
         // check if there are any failed messages to re-emit in the topology
         if (emitFailedMessage()) {
             return;
@@ -254,33 +274,27 @@ public class PulsarSpout extends BaseRichSpout implements IMetric<Map<String, Ob
     }
 
     private boolean emitFailedMessage() {
-        Message<byte[]> msg;
+        if (failedMessages.isEmpty()) {
+            return false;
+        }
 
-        while ((msg = failedMessages.peek()) != null) {
+        for (java.util.Iterator<Message<byte[]>> iterator = failedMessages.iterator(); iterator.hasNext(); ) {
+            Message<byte[]> msg = iterator.next();
             MessageRetries messageRetries = pendingMessageRetries.get(msg.getMessageId());
-            if (messageRetries != null) {
-                // check if retry needs backoff
-                if (Backoff.shouldBackoff(messageRetries.getTimeStamp(), TimeUnit.NANOSECONDS,
-                        messageRetries.getNumRetries(), clientConf.getInitialBackoffIntervalNanos(),
-                        clientConf.getMaxBackoffIntervalNanos())) {
-                    // Non-blocking: Do not sleep main thread; return false to allow processing live incoming messages
-                    return false;
-                } else {
-                    // remove the message from the queue and emit to the topology
-                    LOG.info("[{}] Retrying failed message {}", spoutId, msg.getMessageId());
-                    failedMessages.remove();
-                    mapToValueAndEmit(msg);
-                    return true;
-                }
+            if (messageRetries == null) {
+                // Message is already acked and removed from pendingMessageRetries
+                iterator.remove();
+                continue;
             }
 
-            // messageRetries is null because messageRetries is already acked and removed from pendingMessageRetries
-            // then remove it from failed message queue as well.
-            if (LOG.isDebugEnabled()) {
-                LOG.debug("[{}]-{} removing {} from failedMessage because it's already acked",
-                          pulsarSpoutConf.getTopicNameOrPattern(), spoutId, msg.getMessageId());
+            if (!Backoff.shouldBackoff(messageRetries.getTimeStamp(), TimeUnit.NANOSECONDS,
+                    messageRetries.getNumRetries(), clientConf.getInitialBackoffIntervalNanos(),
+                    clientConf.getMaxBackoffIntervalNanos())) {
+                iterator.remove();
+                LOG.info("[{}] Retrying failed message {}", spoutId, msg.getMessageId());
+                mapToValueAndEmit(msg);
+                return true;
             }
-            failedMessages.remove();
         }
         return false;
     }

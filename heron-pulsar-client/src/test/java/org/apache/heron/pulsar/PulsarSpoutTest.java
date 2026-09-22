@@ -56,6 +56,7 @@ import org.apache.pulsar.client.api.Schema;
 import org.apache.pulsar.client.api.SubscriptionType;
 import org.apache.pulsar.client.impl.ClientBuilderImpl;
 import org.apache.pulsar.client.impl.MessageImpl;
+import org.apache.pulsar.client.impl.conf.ClientConfigurationData;
 import org.apache.pulsar.common.api.proto.MessageMetadata;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
@@ -464,6 +465,8 @@ public class PulsarSpoutTest {
         ConcurrentMap<String, SharedPulsarClient> instances = (ConcurrentMap<String, SharedPulsarClient>) field
                 .get(SharedPulsarClient.class);
         instances.put(componentId, client);
+        ClientConfigurationData clientConfData = ((ClientBuilderImpl) builder).getClientConfigurationData();
+        instances.put(SharedPulsarClient.getClientKey(componentId, clientConfData), client);
 
         MessageImpl<byte[]> msg = new MessageImpl<>(conf.getTopic(), "1:1", Maps.newHashMap(),
                                           msgContent.getBytes(), Schema.BYTES, new MessageMetadata());

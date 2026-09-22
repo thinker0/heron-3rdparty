@@ -40,12 +40,12 @@ public class DefaultSequenceFormat implements SequenceFormat {
     }
 
     @Override
-    public Class keyClass() {
+    public Class<?> keyClass() {
         return LongWritable.class;
     }
 
     @Override
-    public Class valueClass() {
+    public Class<?> valueClass() {
         return Text.class;
     }
 

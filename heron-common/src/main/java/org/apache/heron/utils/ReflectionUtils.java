@@ -65,7 +65,7 @@ public class ReflectionUtils {
             try {
                 return klass.getConstructor(Map.class).newInstance(conf);
             } catch (Exception e) {
-                return klass.newInstance();
+                return klass.getDeclaredConstructor().newInstance();
             }
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -75,7 +75,7 @@ public class ReflectionUtils {
     // Non-static impl methods exist for mocking purposes.
     public <T> T newInstanceImpl(Class<T> klass) {
         try {
-            return klass.newInstance();
+            return klass.getDeclaredConstructor().newInstance();
         } catch (Exception e) {
             throw new RuntimeException(e);
         }

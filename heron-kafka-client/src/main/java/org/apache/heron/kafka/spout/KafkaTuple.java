@@ -42,7 +42,9 @@ public class KafkaTuple extends Values {
      * @return This
      */
     public KafkaTuple routedTo(String stream) {
-        assert this.stream == null;
+        if (this.stream != null) {
+            throw new IllegalStateException("Stream is already set to " + this.stream);
+        }
         this.stream = stream;
         return this;
     }
