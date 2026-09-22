@@ -92,7 +92,7 @@ public class AutoTGT implements IAutoCredentials, ICredentialsRenewer {
                     try {
                         t.destroy();
                     } catch (DestroyFailedException e) {
-                        LOG.warn("Failed to destory ticket ", e);
+                        LOG.warn("Failed to destroy ticket", e);
                     }
                 }
             }
@@ -100,18 +100,6 @@ public class AutoTGT implements IAutoCredentials, ICredentialsRenewer {
                 creds.add(tgt);
             }
         }
-    }
-
-    public static void main(String[] args) throws Exception {
-        AutoTGT at = new AutoTGT();
-        Map<String, Object> conf = new HashMap();
-        conf.put("java.security.auth.login.config", args[0]);
-        at.prepare(conf);
-        Map<String, String> creds = new HashMap<>();
-        at.populateCredentials(creds);
-        Subject s = new Subject();
-        at.populateSubject(s, creds);
-        LOG.info("Got a Subject " + s);
     }
 
     public void prepare(Map<String, Object> conf) {
@@ -150,7 +138,7 @@ public class AutoTGT implements IAutoCredentials, ICredentialsRenewer {
                     throw new RuntimeException("The TGT found is not address-less. Please use -A option with 'kinit'.");
                 }
 
-                LOG.info("Pushing TGT for " + tgt.getClient() + " to topology.");
+                LOG.info("Pushing TGT for {} to topology.", tgt.getClient());
                 saveTGT(tgt, credentials);
             } finally {
                 lc.logout();
@@ -216,7 +204,7 @@ public class AutoTGT implements IAutoCredentials, ICredentialsRenewer {
             // subject.getPrincipals().add(new User(tgt.getClient().toString(), AuthenticationMethod.KERBEROS, null));
 
             Class<?> confClass = Class.forName("org.apache.hadoop.conf.Configuration");
-            Constructor confCons = confClass.getConstructor();
+            Constructor<?> confCons = confClass.getConstructor();
             Object conf = confCons.newInstance();
             Class<?> hknClass = Class.forName("org.apache.hadoop.security.HadoopKerberosName");
             Method hknSetConf = hknClass.getMethod("setConfiguration", confClass);
@@ -232,7 +220,7 @@ public class AutoTGT implements IAutoCredentials, ICredentialsRenewer {
             }
 
             Class<?> userClass = Class.forName("org.apache.hadoop.security.User");
-            Constructor userCons = userClass.getConstructor(String.class, authMethodClass, LoginContext.class);
+            Constructor<?> userCons = userClass.getConstructor(String.class, authMethodClass, LoginContext.class);
             userCons.setAccessible(true);
             String name = getTGT(subject).getClient().toString();
             Object user = userCons.newInstance(name, kerbAuthMethod, null);
@@ -260,7 +248,7 @@ public class AutoTGT implements IAutoCredentials, ICredentialsRenewer {
             long now = System.currentTimeMillis();
             if (now >= refreshTime) {
                 try {
-                    LOG.info("Renewing TGT for " + tgt.getClient());
+                    LOG.info("Renewing TGT for {}", tgt.getClient());
                     tgt.refresh();
                     saveTGT(tgt, credentials);
                 } catch (RefreshFailedException e) {
@@ -269,14 +257,4 @@ public class AutoTGT implements IAutoCredentials, ICredentialsRenewer {
             }
         }
     }
-
-    private Long getMsecsUntilExpiration() {
-        KerberosTicket tgt = getTGT(this.credentials);
-        if (tgt == null) {
-            return null;
-        }
-        long end = tgt.getEndTime().getTime();
-        return end - System.currentTimeMillis();
-    }
-
 }

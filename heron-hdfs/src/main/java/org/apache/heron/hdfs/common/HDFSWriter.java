@@ -46,7 +46,7 @@ public class HDFSWriter extends AbstractHDFSWriter {
 
     @Override
     protected void doSync() throws IOException {
-        LOG.info("Attempting to sync all data to filesystem");
+        LOG.debug("Attempting to sync all data to filesystem");
         if (this.out instanceof HdfsDataOutputStream) {
             ((HdfsDataOutputStream) this.out).hsync(EnumSet.of(HdfsDataOutputStream.SyncFlag.UPDATE_LENGTH));
         } else {

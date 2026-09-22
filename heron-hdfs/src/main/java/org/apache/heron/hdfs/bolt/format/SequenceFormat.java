@@ -28,12 +28,12 @@ public interface SequenceFormat extends Serializable {
     /**
      * Key class used by implementation (e.g. IntWritable.class, etc.).
      */
-    Class keyClass();
+    Class<?> keyClass();
 
     /**
      * Value class used by implementation (e.g. Text.class, etc.).
      */
-    Class valueClass();
+    Class<?> valueClass();
 
     /**
      * Given a tuple, return the key that should be written to the sequence file.

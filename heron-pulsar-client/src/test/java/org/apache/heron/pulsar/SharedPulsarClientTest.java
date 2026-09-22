@@ -73,7 +73,8 @@ public class SharedPulsarClientTest {
     }
 
     private SharedPulsarClient createMockedSharedClient(String componentId, PulsarClientImpl mockClient) throws Exception {
-        SharedPulsarClient client = new SharedPulsarClient(componentId, mockClient);
+        String instanceKey = clientConf != null ? SharedPulsarClient.getClientKey(componentId, clientConf) : componentId;
+        SharedPulsarClient client = new SharedPulsarClient(componentId, instanceKey, mockClient);
 
         Field instancesField = SharedPulsarClient.class.getDeclaredField("instances");
         instancesField.setAccessible(true);
@@ -81,7 +82,7 @@ public class SharedPulsarClientTest {
         ConcurrentMap<String, SharedPulsarClient> instances =
                 (ConcurrentMap<String, SharedPulsarClient>) instancesField.get(null);
 
-        instances.put(componentId, client);
+        instances.put(instanceKey, client);
         return client;
     }
 

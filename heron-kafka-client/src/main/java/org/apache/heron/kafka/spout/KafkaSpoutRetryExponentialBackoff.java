@@ -56,14 +56,20 @@ public class KafkaSpoutRetryExponentialBackoff implements KafkaSpoutRetryService
      * Comparator ordering by timestamp. 
      */
     private static class RetryEntryTimeStampComparator implements Serializable, Comparator<RetrySchedule> {
+        private static final long serialVersionUID = 1L;
+
         @Override
         public int compare(RetrySchedule entry1, RetrySchedule entry2) {
-            int result = Long.valueOf(entry1.nextRetryTimeNanos()).compareTo(entry2.nextRetryTimeNanos());
+            int result = Long.compare(entry1.nextRetryTimeNanos(), entry2.nextRetryTimeNanos());
             
             if (result == 0) {
-                //TreeSet uses compareTo instead of equals() for the Set contract
-                //Ensure that we can save two retry schedules with the same timestamp
-                result = entry1.hashCode() - entry2.hashCode();
+                result = entry1.msgId().topic().compareTo(entry2.msgId().topic());
+                if (result == 0) {
+                    result = Integer.compare(entry1.msgId().partition(), entry2.msgId().partition());
+                }
+                if (result == 0) {
+                    result = Long.compare(entry1.msgId().offset(), entry2.msgId().offset());
+                }
             }
             return result;
         }
@@ -254,12 +260,12 @@ public class KafkaSpoutRetryExponentialBackoff implements KafkaSpoutRetryService
 
     @Override
     public boolean schedule(KafkaSpoutMessageId msgId) {
+        // Remove existing schedule for the message id
+        remove(msgId);
         if (msgId.numFails() > maxRetries) {
             LOG.debug("Not scheduling [{}] because reached maximum number of retries [{}].", msgId, maxRetries);
             return false;
         } else {
-            //Remove existing schedule for the message id
-            remove(msgId);
             final RetrySchedule retrySchedule = new RetrySchedule(msgId, nextTime(msgId));
             retrySchedules.add(retrySchedule);
             toRetryMsgs.add(msgId);
@@ -298,12 +304,20 @@ public class KafkaSpoutRetryExponentialBackoff implements KafkaSpoutRetryService
 
     // if value is greater than Long.MAX_VALUE it truncates to Long.MAX_VALUE
     private long nextTime(KafkaSpoutMessageId msgId) {
-        Validate.isTrue(msgId.numFails() > 0, "nextTime assumes the message has failed at least once");
         final long currentTimeNanos = Time.nanoTime();
-        final long nextTimeNanos = msgId.numFails() == 1                // numFails = 1, 2, 3, ...
-                ? currentTimeNanos + initialDelay.lengthNanos
-                : currentTimeNanos + delayPeriod.lengthNanos * (long) (Math.pow(2, msgId.numFails() - 1));
-        return Math.min(nextTimeNanos, currentTimeNanos + maxDelay.lengthNanos);
+        if (msgId.numFails() <= 1) {
+            long delay = Math.min(initialDelay.lengthNanos, maxDelay.lengthNanos);
+            return (Long.MAX_VALUE - delay < currentTimeNanos) ? Long.MAX_VALUE : currentTimeNanos + delay;
+        }
+        int exp = Math.min(msgId.numFails() - 1, 30);
+        long multiplier = 1L << exp;
+        long delayNanos;
+        if (multiplier > 0 && maxDelay.lengthNanos / multiplier < delayPeriod.lengthNanos) {
+            delayNanos = maxDelay.lengthNanos;
+        } else {
+            delayNanos = Math.min(delayPeriod.lengthNanos * multiplier, maxDelay.lengthNanos);
+        }
+        return (Long.MAX_VALUE - delayNanos < currentTimeNanos) ? Long.MAX_VALUE : currentTimeNanos + delayNanos;
     }
 
     @Override

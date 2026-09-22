@@ -260,6 +260,24 @@ public abstract class AbstractHdfsBolt extends BaseRichBolt {
 
     private void doRotationAndRemoveAllWriters() {
         synchronized (writeLock) {
+            if (tupleBatch.size() > 0) {
+                try {
+                    syncAllWriters();
+                    LOG.debug("Data synced to filesystem before scheduled rotation. Ack'ing [{}] tuples", tupleBatch.size());
+                    for (Tuple t : tupleBatch) {
+                        this.collector.ack(t);
+                    }
+                    tupleBatch.clear();
+                    syncPolicy.reset();
+                } catch (IOException e) {
+                    LOG.warn("Data could not be synced before scheduled rotation, failing batch", e);
+                    this.collector.reportError(e);
+                    for (Tuple t : tupleBatch) {
+                        this.collector.fail(t);
+                    }
+                    tupleBatch.clear();
+                }
+            }
             for (final Writer writer : writers.values()) {
                 try {
                     rotateOutputFile(writer);
@@ -313,7 +331,7 @@ public abstract class AbstractHdfsBolt extends BaseRichBolt {
 
     protected abstract Writer makeNewWriter(Path path, Tuple tuple) throws IOException;
 
-    static class WritersMap extends LinkedHashMap<String, Writer> {
+    class WritersMap extends LinkedHashMap<String, Writer> {
         final long maxWriters;
         final OutputCollector collector;
 
@@ -326,15 +344,24 @@ public abstract class AbstractHdfsBolt extends BaseRichBolt {
         @Override
         protected boolean removeEldestEntry(Map.Entry<String, Writer> eldest) {
             if (this.size() > this.maxWriters) {
-                //The writer must be closed before removed from the map.
-                //If it failed, we might lose some data.
+                // The writer must be rotated and closed before removed from the map.
+                // Flush pending tuples first to ensure data written to this writer is committed.
                 try {
-                    eldest.getValue().close();
+                    if (tupleBatch.size() > 0) {
+                        syncAllWriters();
+                        for (Tuple t : tupleBatch) {
+                            collector.ack(t);
+                        }
+                        tupleBatch.clear();
+                        syncPolicy.reset();
+                    }
+                    rotateOutputFile(eldest.getValue());
+                    return true;
                 } catch (IOException e) {
                     collector.reportError(e);
-                    LOG.error("Failed to close the eldest Writer");
+                    LOG.error("Failed to rotate the eldest Writer; retaining entry to prevent un-synced data loss", e);
+                    return false;
                 }
-                return true;
             } else {
                 return false;
             }

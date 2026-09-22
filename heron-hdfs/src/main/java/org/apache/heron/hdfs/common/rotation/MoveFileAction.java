@@ -39,6 +39,8 @@ public class MoveFileAction implements RotationAction {
         Path destPath = new Path(destination, filePath.getName());
         LOG.info("Moving file {} to {}", filePath, destPath);
         boolean success = fileSystem.rename(filePath, destPath);
-        return;
+        if (!success) {
+            throw new IOException(String.format("Failed to move file %s to %s", filePath, destPath));
+        }
     }
 }

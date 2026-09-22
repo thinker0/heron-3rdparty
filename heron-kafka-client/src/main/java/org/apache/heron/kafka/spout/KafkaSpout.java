@@ -106,6 +106,7 @@ public class KafkaSpout<K, V> extends BaseRichSpout {
     private transient TopologyContext context;
     private transient CommitMetadataManager commitMetadataManager;
     private transient KafkaOffsetMetric<K, V> kafkaOffsetMetric;
+    private transient Timer offsetMetricsRefreshTimer;
     private transient KafkaSpoutConsumerRebalanceListener rebalanceListener;
 
     public KafkaSpout(KafkaSpoutConfig<K, V> kafkaSpoutConfig) {
@@ -152,6 +153,8 @@ public class KafkaSpout<K, V> extends BaseRichSpout {
         tupleListener.open(conf, context);
         if (canRegisterMetrics()) {
             registerMetric();
+            offsetMetricsRefreshTimer = new Timer(TIMER_DELAY_MS,
+                TimeUnit.SECONDS.toMillis(metricsIntervalInSecs), TimeUnit.MILLISECONDS);
         }
 
         LOG.info("Kafka Spout opened with the following configuration: {}", kafkaSpoutConfig);
@@ -317,6 +320,10 @@ public class KafkaSpout<K, V> extends BaseRichSpout {
                     consumer.commitAsync(offsetsToCommit, null);
                     LOG.debug("Committed offsets {} to Kafka", offsetsToCommit);
                 }
+            }
+
+            if (kafkaOffsetMetric != null && offsetMetricsRefreshTimer != null && offsetMetricsRefreshTimer.isExpiredResetOnTrue()) {
+                kafkaOffsetMetric.refresh();
             }
 
             PollablePartitionsInfo pollablePartitionsInfo = getPollablePartitionsInfo();
@@ -603,7 +610,10 @@ public class KafkaSpout<K, V> extends BaseRichSpout {
 
         if (msgId.isNullTuple()) {
             //a null tuple should be added to the ack list since by definition is a direct ack
-            offsetManagers.get(msgId.getTopicPartition()).addToAckMsgs(msgId);
+            OffsetManager offsetManager = offsetManagers.get(msgId.getTopicPartition());
+            if (offsetManager != null) {
+                offsetManager.addToAckMsgs(msgId);
+            }
             LOG.debug("Received direct ack for message [{}], associated with null tuple", msgId);
             tupleListener.onAck(msgId);
             return;
@@ -616,7 +626,10 @@ public class KafkaSpout<K, V> extends BaseRichSpout {
         } else {
             Validate.isTrue(!retryService.isScheduled(msgId), "The message id " + msgId + " is queued for retry while being acked."
                 + " This should never occur barring errors in the RetryService implementation or the spout code.");
-            offsetManagers.get(msgId.getTopicPartition()).addToAckMsgs(msgId);
+            OffsetManager offsetManager = offsetManagers.get(msgId.getTopicPartition());
+            if (offsetManager != null) {
+                offsetManager.addToAckMsgs(msgId);
+            }
             emitted.remove(msgId);
         }
         tupleListener.onAck(msgId);

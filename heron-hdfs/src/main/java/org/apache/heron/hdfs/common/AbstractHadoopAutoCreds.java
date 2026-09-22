@@ -53,8 +53,7 @@ public abstract class AbstractHadoopAutoCreds implements IAutoCredentials, Crede
 
     @Override
     public void populateCredentials(Map<String, String> credentials) {
-        credentials.put(getCredentialKey(StringUtils.EMPTY),
-                DatatypeConverter.printBase64Binary("dummy place holder".getBytes()));
+        // Default implementation is a no-op; subclasses populate active credentials when required.
     }
 
     /**

@@ -16,12 +16,13 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.security.NoSuchAlgorithmException;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.avro.Schema;
 import org.apache.avro.SchemaNormalization;
-import org.apache.commons.codec.binary.Base64;
 
 /**
  * A class to help (de)serialize a pre-defined set of Avro schemas.  Schemas should be listed, one per line, in a file
@@ -31,22 +32,49 @@ import org.apache.commons.codec.binary.Base64;
 public class FixedAvroSerializer extends AbstractAvroSerializer {
 
     private static final String FP_ALGO = "CRC-64-AVRO";
+    private static final String DEFAULT_CONFIG_FILE = "FixedAvroSerializer.config";
     final Map<String, Schema> fingerprint2schemaMap = new HashMap<>();
     final Map<Schema, String> schema2fingerprintMap = new HashMap<>();
 
     public FixedAvroSerializer() throws IOException, NoSuchAlgorithmException {
-        InputStream in = this.getClass().getClassLoader().getResourceAsStream("FixedAvroSerializer.config");
-        BufferedReader reader = new BufferedReader(new InputStreamReader(in));
+        this(DEFAULT_CONFIG_FILE);
+    }
 
-        String line;
-        while ((line = reader.readLine()) != null) {
-            Schema schema = new Schema.Parser().parse(line);
-            byte[] fp = SchemaNormalization.parsingFingerprint(FP_ALGO, schema);
-            String fingerPrint = new String(Base64.decodeBase64(fp));
+    public FixedAvroSerializer(String configResource) throws IOException, NoSuchAlgorithmException {
+        this(loadConfigStream(configResource));
+    }
 
-            fingerprint2schemaMap.put(fingerPrint, schema);
-            schema2fingerprintMap.put(schema, fingerPrint);
+    public FixedAvroSerializer(InputStream in) throws IOException, NoSuchAlgorithmException {
+        if (in == null) {
+            throw new IOException("Input stream for Avro schemas configuration is null");
         }
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                line = line.trim();
+                if (line.isEmpty() || line.startsWith("#")) {
+                    continue;
+                }
+                Schema schema = new Schema.Parser().parse(line);
+                byte[] fp = SchemaNormalization.parsingFingerprint(FP_ALGO, schema);
+                String fingerPrint = Base64.getEncoder().encodeToString(fp);
+
+                fingerprint2schemaMap.put(fingerPrint, schema);
+                schema2fingerprintMap.put(schema, fingerPrint);
+            }
+        }
+    }
+
+    private static InputStream loadConfigStream(String configResource) throws IOException {
+        ClassLoader cl = Thread.currentThread().getContextClassLoader();
+        InputStream in = cl != null ? cl.getResourceAsStream(configResource) : null;
+        if (in == null) {
+            in = FixedAvroSerializer.class.getClassLoader().getResourceAsStream(configResource);
+        }
+        if (in == null) {
+            throw new IOException("Avro configuration file not found in classpath: " + configResource);
+        }
+        return in;
     }
 
     @Override

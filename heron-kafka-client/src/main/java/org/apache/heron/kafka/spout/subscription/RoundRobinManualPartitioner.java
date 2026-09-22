@@ -18,6 +18,7 @@
 
 package org.apache.heron.kafka.spout.subscription;
 
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -38,8 +39,13 @@ public class RoundRobinManualPartitioner implements ManualPartitioner {
 
     @Override
     public Set<TopicPartition> getPartitionsForThisTask(List<TopicPartition> allPartitionsSorted, TopologyContext context) {
-        int thisTaskIndex = context.getThisTaskIndex();
-        int totalTaskCount = context.getComponentTasks(context.getThisComponentId()).size();
+        if (allPartitionsSorted == null || allPartitionsSorted.isEmpty()) {
+            return Collections.emptySet();
+        }
+        int thisTaskIndex = context != null ? context.getThisTaskIndex() : 0;
+        List<Integer> tasks = (context != null && context.getThisComponentId() != null)
+            ? context.getComponentTasks(context.getThisComponentId()) : null;
+        int totalTaskCount = (tasks != null && !tasks.isEmpty()) ? tasks.size() : 1;
         Set<TopicPartition> myPartitions = new HashSet<>(allPartitionsSorted.size() / totalTaskCount + 1);
         for (int i = thisTaskIndex; i < allPartitionsSorted.size(); i += totalTaskCount) {
             myPartitions.add(allPartitionsSorted.get(i));

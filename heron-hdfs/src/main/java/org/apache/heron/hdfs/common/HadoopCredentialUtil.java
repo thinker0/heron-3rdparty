@@ -19,13 +19,12 @@
 package org.apache.heron.hdfs.common;
 
 import java.io.ByteArrayInputStream;
-import java.io.ObjectInputStream;
+import java.io.DataInputStream;
+import java.util.Base64;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-
-import javax.xml.bind.DatatypeConverter;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.math3.util.Pair;
@@ -50,13 +49,13 @@ final class HadoopCredentialUtil {
             for (String configKey : configKeys) {
                 Credentials cred = doGetCredentials(provider, credentials, configKey);
                 if (cred != null) {
-                    res.add(new Pair(configKey, cred));
+                    res.add(new Pair<>(configKey, cred));
                 }
             }
         } else {
             Credentials cred = doGetCredentials(provider, credentials, StringUtils.EMPTY);
             if (cred != null) {
-                res.add(new Pair(StringUtils.EMPTY, cred));
+                res.add(new Pair<>(StringUtils.EMPTY, cred));
             }
         }
         return res;
@@ -68,14 +67,28 @@ final class HadoopCredentialUtil {
         Credentials credential = null;
         String credentialKey = provider.getCredentialKey(configKey);
         if (credentials != null && credentials.containsKey(credentialKey)) {
-            try {
-                byte[] credBytes = DatatypeConverter.parseBase64Binary(credentialKey);
-                ObjectInputStream in = new ObjectInputStream(new ByteArrayInputStream(credBytes));
-
-                credential = new Credentials();
-                credential.readFields(in);
-            } catch (Exception e) {
-                LOG.error("Could not obtain credentials from credentials map.", e);
+            String base64Value = credentials.get(credentialKey);
+            if (StringUtils.isNotBlank(base64Value)) {
+                try {
+                    byte[] credBytes = Base64.getDecoder().decode(base64Value.trim());
+                    credential = new Credentials();
+                    boolean loaded = false;
+                    try (DataInputStream in = new DataInputStream(new ByteArrayInputStream(credBytes))) {
+                        try {
+                            credential.readTokenStorageStream(in);
+                            loaded = true;
+                        } catch (Exception ignored) {
+                            // Fallback to Writable readFields
+                        }
+                    }
+                    if (!loaded) {
+                        try (DataInputStream in = new DataInputStream(new ByteArrayInputStream(credBytes))) {
+                            credential.readFields(in);
+                        }
+                    }
+                } catch (Exception e) {
+                    LOG.error("Could not obtain credentials from credentials map for key: {}", credentialKey, e);
+                }
             }
         }
         return credential;

@@ -49,6 +49,7 @@ import org.apache.pulsar.client.api.PulsarClientException;
 import org.apache.pulsar.client.api.TypedMessageBuilder;
 import org.apache.pulsar.client.impl.ClientBuilderImpl;
 import org.apache.pulsar.client.impl.TypedMessageBuilderImpl;
+import org.apache.pulsar.client.impl.conf.ClientConfigurationData;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
@@ -107,6 +108,8 @@ public class PulsarBoltTest {
         @SuppressWarnings("unchecked")
         Map<String, SharedPulsarClient> instances = (Map<String, SharedPulsarClient>) clientField.get(null);
         instances.put("pulsar-bolt-comp", sharedClient);
+        ClientConfigurationData clientConfData = ((ClientBuilderImpl) builder).getClientConfigurationData();
+        instances.put(SharedPulsarClient.getClientKey("pulsar-bolt-comp", clientConfData), sharedClient);
 
         bolt.prepare(new HashMap<>(), context, collector);
 

@@ -79,6 +79,9 @@ public class OffsetManager {
      * @throws NoSuchElementException if the index is out of range
      */
     public long getNthUncommittedOffsetAfterCommittedOffset(int index) {
+        if (index <= 0 || index > emittedOffsets.size()) {
+            throw new IndexOutOfBoundsException("Index " + index + " out of bounds for emittedOffsets of size " + emittedOffsets.size());
+        }
         Iterator<Long> offsetIter = emittedOffsets.iterator();
         for (int i = 0; i < index - 1; i++) {
             offsetIter.next();
