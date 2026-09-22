@@ -189,6 +189,17 @@ public class ClientAuthUtils {
         }
     }
 
+    private static final ObjectInputFilter KERBEROS_TICKET_FILTER =
+        ObjectInputFilter.Config.createFilter(
+            "javax.security.auth.kerberos.*;"
+            + "javax.security.auth.*;"
+            + "java.net.*;"
+            + "[Ljava.net.InetAddress;"
+            + "java.util.*;"
+            + "java.lang.*;"
+            + "!*"
+        );
+
     public static byte[] serializeKerberosTicket(KerberosTicket tgt) throws Exception {
         try (ByteArrayOutputStream bao = new ByteArrayOutputStream();
              ObjectOutputStream out = new ObjectOutputStream(bao)) {
@@ -199,24 +210,24 @@ public class ClientAuthUtils {
     }
 
     public static KerberosTicket deserializeKerberosTicket(byte[] tgtBytes) {
+        if (tgtBytes == null || tgtBytes.length == 0) {
+            return null;
+        }
         try (ByteArrayInputStream bin = new ByteArrayInputStream(tgtBytes);
              ObjectInputStream in = new ObjectInputStream(bin)) {
-            ObjectInputFilter filter = ObjectInputFilter.Config.createFilter(
-                "javax.security.auth.kerberos.KerberosTicket;javax.security.auth.kerberos.KerberosPrincipal;javax.security.auth.Subject;javax.security.auth.kerberos.KerberosKey;javax.security.auth.kerberos.EncryptionKey;java.util.*;java.lang.*;!*"
-            );
-            in.setObjectInputFilter(filter);
+            in.setObjectInputFilter(KERBEROS_TICKET_FILTER);
             return (KerberosTicket) in.readObject();
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            throw new RuntimeException("Failed to deserialize KerberosTicket TGT", e);
         }
     }
 
     public static KerberosTicket cloneKerberosTicket(KerberosTicket kerberosTicket) {
         if (kerberosTicket != null) {
             try {
-                return (deserializeKerberosTicket(serializeKerberosTicket(kerberosTicket)));
+                return deserializeKerberosTicket(serializeKerberosTicket(kerberosTicket));
             } catch (Exception e) {
-                throw new RuntimeException("Failed to clone KerberosTicket TGT!!", e);
+                throw new RuntimeException("Failed to clone KerberosTicket TGT", e);
             }
         }
         return null;
