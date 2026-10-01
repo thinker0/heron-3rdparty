@@ -20,8 +20,6 @@ package org.apache.heron.kafka.spout;
 
 import java.util.Set;
 import java.util.regex.Pattern;
-import org.apache.commons.lang.builder.ToStringBuilder;
-import org.apache.commons.lang.builder.ToStringStyle;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.serialization.StringDeserializer;
@@ -367,15 +365,16 @@ public class KafkaSpoutConfig<K, V> extends CommonKafkaSpoutConfig<K, V> {
 
     @Override
     public String toString() {
-        return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE)
-            .append("offsetCommitPeriodMs", offsetCommitPeriodMs)
-            .append("maxUncommittedOffsets", maxUncommittedOffsets)
-            .append("retryService", retryService)
-            .append("tupleListener", tupleListener)
-            .append("processingGuarantee", processingGuarantee)
-            .append("emitNullTuples", emitNullTuples)
-            .append("tupleTrackingEnforced", tupleTrackingEnforced)
-            .append("metricsTimeBucketSizeInSecs", metricsTimeBucketSizeInSecs)
+        return new StringBuilder(getClass().getSimpleName())
+            .append("[offsetCommitPeriodMs=").append(offsetCommitPeriodMs)
+            .append(",maxUncommittedOffsets=").append(maxUncommittedOffsets)
+            .append(",retryService=").append(retryService)
+            .append(",tupleListener=").append(tupleListener)
+            .append(",processingGuarantee=").append(processingGuarantee)
+            .append(",emitNullTuples=").append(emitNullTuples)
+            .append(",tupleTrackingEnforced=").append(tupleTrackingEnforced)
+            .append(",metricsTimeBucketSizeInSecs=").append(metricsTimeBucketSizeInSecs)
+            .append(']')
             .toString();
     }
 }

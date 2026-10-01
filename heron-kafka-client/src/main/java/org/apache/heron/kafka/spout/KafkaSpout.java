@@ -35,7 +35,6 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
-import org.apache.commons.lang.Validate;
 import org.apache.heron.api.spout.BaseRichSpout;
 import org.apache.heron.kafka.spout.KafkaSpoutConfig.ProcessingGuarantee;
 import org.apache.heron.kafka.spout.internal.CommitMetadataManager;
@@ -624,8 +623,10 @@ public class KafkaSpout<K, V> extends BaseRichSpout {
                 + "came from a topic-partition that this consumer group instance is no longer tracking "
                 + "due to rebalance/partition reassignment. No action taken.", msgId);
         } else {
-            Validate.isTrue(!retryService.isScheduled(msgId), "The message id " + msgId + " is queued for retry while being acked."
-                + " This should never occur barring errors in the RetryService implementation or the spout code.");
+            if (retryService.isScheduled(msgId)) {
+                throw new IllegalArgumentException("The message id " + msgId + " is queued for retry while being acked."
+                    + " This should never occur barring errors in the RetryService implementation or the spout code.");
+            }
             OffsetManager offsetManager = offsetManagers.get(msgId.getTopicPartition());
             if (offsetManager != null) {
                 offsetManager.addToAckMsgs(msgId);
@@ -649,8 +650,10 @@ public class KafkaSpout<K, V> extends BaseRichSpout {
                 + " Partitions may have been reassigned. Ignoring message [{}]", msgId);
             return;
         }
-        Validate.isTrue(!retryService.isScheduled(msgId), "The message id " + msgId + " is queued for retry while being failed."
-            + " This should never occur barring errors in the RetryService implementation or the spout code.");
+        if (retryService.isScheduled(msgId)) {
+            throw new IllegalArgumentException("The message id " + msgId + " is queued for retry while being failed."
+                + " This should never occur barring errors in the RetryService implementation or the spout code.");
+        }
 
         msgId.incrementNumFails();
 

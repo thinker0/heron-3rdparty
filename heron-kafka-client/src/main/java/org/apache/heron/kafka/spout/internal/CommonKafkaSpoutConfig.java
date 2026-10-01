@@ -23,8 +23,6 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 import java.util.regex.Pattern;
-import org.apache.commons.lang.builder.ToStringBuilder;
-import org.apache.commons.lang.builder.ToStringStyle;
 import org.apache.heron.kafka.spout.DefaultRecordTranslator;
 import org.apache.heron.kafka.spout.FirstPollOffsetStrategy;
 import org.apache.heron.kafka.spout.RecordTranslator;
@@ -267,14 +265,15 @@ public abstract class CommonKafkaSpoutConfig<K, V> implements Serializable {
 
     @Override
     public String toString() {
-        return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE)
-            .append("kafkaProps", kafkaProps)
-            .append("partitionRefreshPeriodMs", partitionRefreshPeriodMs)
-            .append("pollTimeoutMs", pollTimeoutMs)
-            .append("topicFilter", topicFilter)
-            .append("topicPartitioner", topicPartitioner)
-            .append("translator", translator)
-            .append("startTimeStamp", startTimeStamp)
+        return new StringBuilder(getClass().getSimpleName())
+            .append("[kafkaProps=").append(kafkaProps)
+            .append(",partitionRefreshPeriodMs=").append(partitionRefreshPeriodMs)
+            .append(",pollTimeoutMs=").append(pollTimeoutMs)
+            .append(",topicFilter=").append(topicFilter)
+            .append(",topicPartitioner=").append(topicPartitioner)
+            .append(",translator=").append(translator)
+            .append(",startTimeStamp=").append(startTimeStamp)
+            .append(']')
             .toString();
     }
 }
