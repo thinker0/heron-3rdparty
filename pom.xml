@@ -11,7 +11,7 @@
   <groupId>com.github.thinker0.heron</groupId>
   <artifactId>heron-3rdparty</artifactId>
   <name>Heron 3rd Library</name>
-  <version>1.1.4</version>
+  <version>1.1.5</version>
   <packaging>pom</packaging>
 
   <modules>
@@ -31,8 +31,8 @@
     <kafka.client.version>3.9.1</kafka.client.version>
     <pulsar.version>2.11.4</pulsar.version>
     <netty.version>4.1.136.Final</netty.version>
-    <jackson.version>2.18.10</jackson.version>
-    <jackson.version.databind>2.18.10</jackson.version.databind>
+    <jackson.version>2.18.11</jackson.version>
+    <jackson.version.databind>2.18.11</jackson.version.databind>
     <jetty.version>9.4.56.v20240826</jetty.version>
     <logback.version>1.5.34</logback.version>
 
@@ -281,6 +281,7 @@
         <extensions>true</extensions>
         <configuration>
           <publishingServerId>central</publishingServerId>
+          <autoPublish>true</autoPublish>
         </configuration>
       </plugin>
     </plugins>
